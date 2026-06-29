@@ -1,0 +1,33 @@
+.mono-text-area {
+    -fx-font-family: "Consolas", "Monaco", "Courier New", monospace;
+    -fx-font-size: 13px;
+    -fx-text-fill: #e0e0e0;
+    -fx-control-inner-background: #1e1e1e;
+}
+.mono-text-area .content {
+    -fx-background-color: #1e1e1e;
+}
+.section-title {
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+    -fx-text-fill: #888888;
+}
+.send-area {
+    -fx-background-color: #f0f0f0;
+    -fx-border-color: #dddddd;
+    -fx-border-width: 1px 0 0 0;
+}
+.send-area .toggle-button:selected {
+    -fx-background-color: #4a90d9;
+    -fx-text-fill: white;
+}
+.status-bar {
+    -fx-background-color: #2d2d2d;
+    -fx-text-fill: #cccccc;
+    -fx-font-size: 11px;
+}
+.tool-bar {
+    -fx-background-color: #f5f5f5;
+    -fx-border-color: #dddddd;
+    -fx-border-width: 0 0 1px 0;
+}

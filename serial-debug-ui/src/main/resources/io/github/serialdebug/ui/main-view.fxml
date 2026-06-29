@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox spacing="0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="io.github.serialdebug.ui.controller.MainController">
+
+    <ToolBar fx:id="toolbar">
+        <Label text="Port:" />
+        <ComboBox fx:id="portCombo" prefWidth="180" promptText="Select port" />
+        <Separator orientation="VERTICAL" />
+        <Label text="Baud:" />
+        <ComboBox fx:id="baudRateCombo" prefWidth="100" editable="true" />
+        <Label text="Data:" />
+        <ComboBox fx:id="dataBitsCombo" prefWidth="60" />
+        <Label text="Stop:" />
+        <ComboBox fx:id="stopBitsCombo" prefWidth="60" />
+        <Label text="Parity:" />
+        <ComboBox fx:id="parityCombo" prefWidth="90" />
+        <Separator orientation="VERTICAL" />
+        <Button fx:id="openCloseButton" onAction="#onOpenClose">
+            <graphic><FontIcon iconLiteral="mdi2p-power-plug" /></graphic>
+        </Button>
+        <Button fx:id="refreshButton" onAction="#onRefreshPorts">
+            <graphic><FontIcon iconLiteral="mdi2r-refresh" /></graphic>
+        </Button>
+    </ToolBar>
+
+    <SplitPane dividerPositions="0.25" VBox.vgrow="ALWAYS">
+        <VBox spacing="8" minWidth="180">
+            <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+            <Label text="Port Status" styleClass="section-title" />
+            <Label fx:id="statusLabel" text="Disconnected" wrapText="true" />
+            <Separator />
+            <Label text="Statistics" styleClass="section-title" />
+            <Label fx:id="rxCountLabel" text="RX: 0 bytes" />
+            <Label fx:id="txCountLabel" text="TX: 0 bytes" />
+            <VBox VBox.vgrow="ALWAYS" />
+        </VBox>
+        <VBox spacing="0">
+            <TabPane tabClosingPolicy="UNAVAILABLE">
+                <Tab text="HEX">
+                    <TextArea fx:id="hexViewArea" editable="false" styleClass="mono-text-area" />
+                </Tab>
+                <Tab text="ASCII">
+                    <TextArea fx:id="asciiViewArea" editable="false" styleClass="mono-text-area" />
+                </Tab>
+            </TabPane>
+            <Separator />
+            <HBox spacing="8" alignment="CENTER_LEFT" styleClass="send-area">
+                <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+                <ToggleButton fx:id="hexModeToggle" text="HEX" selected="true" />
+                <TextField fx:id="sendTextField" HBox.hgrow="ALWAYS" promptText="Enter data to send..." />
+                <CheckBox fx:id="appendNewlineCheckBox" text="\r\n" />
+                <Button fx:id="sendButton" onAction="#onSend" defaultButton="true">
+                    <graphic><FontIcon iconLiteral="mdi2s-send" /></graphic>
+                    Send
+                </Button>
+            </HBox>
+        </VBox>
+    </SplitPane>
+
+    <HBox spacing="16" styleClass="status-bar">
+        <padding><Insets top="4" right="8" bottom="4" left="8"/></padding>
+        <Label fx:id="connectionStatusLabel" text="Disconnected" />
+        <Pane HBox.hgrow="ALWAYS" />
+        <Label fx:id="statusRxLabel" text="RX: 0" />
+        <Label fx:id="statusTxLabel" text="TX: 0" />
+    </HBox>
+</VBox>
