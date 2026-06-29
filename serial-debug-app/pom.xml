@@ -31,6 +31,13 @@
                     </archive>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>io.github.serialdebug.app.Launcher</mainClass>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>
