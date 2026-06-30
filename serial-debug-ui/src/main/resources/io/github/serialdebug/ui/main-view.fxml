@@ -28,6 +28,20 @@
         <Button fx:id="refreshButton" onAction="#onRefreshPorts">
             <graphic><FontIcon iconLiteral="mdi2r-refresh" /></graphic>
         </Button>
+        <Separator orientation="VERTICAL" />
+        <Button fx:id="clearButton" onAction="#onClear" text="Clear">
+            <graphic><FontIcon iconLiteral="mdi2c-close" /></graphic>
+        </Button>
+        <Separator orientation="VERTICAL" />
+        <Button fx:id="startLoggingButton" onAction="#onStartLogging">
+            <graphic><FontIcon iconLiteral="mdi2c-content-save" /></graphic>
+        </Button>
+        <Button fx:id="stopLoggingButton" onAction="#onStopLogging" disable="true">
+            <graphic><FontIcon iconLiteral="mdi2s-stop" /></graphic>
+        </Button>
+        <Label text="Log:" />
+        <ToggleButton fx:id="logHexToggle" text="HEX" selected="true" />
+        <ToggleButton fx:id="logAsciiToggle" text="ASCII" />
     </ToolBar>
 
     <SplitPane dividerPositions="0.25" VBox.vgrow="ALWAYS">
@@ -67,6 +81,8 @@
     <HBox spacing="16" styleClass="status-bar">
         <padding><Insets top="4" right="8" bottom="4" left="8"/></padding>
         <Label fx:id="connectionStatusLabel" text="Disconnected" />
+        <Pane HBox.hgrow="ALWAYS" />
+        <Label fx:id="loggingStatusLabel" text="Not recording" />
         <Pane HBox.hgrow="ALWAYS" />
         <Label fx:id="statusRxLabel" text="RX: 0" />
         <Label fx:id="statusTxLabel" text="TX: 0" />
