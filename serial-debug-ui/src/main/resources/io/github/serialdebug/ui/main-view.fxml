@@ -55,7 +55,7 @@
                 <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
                 <ToggleButton fx:id="hexModeToggle" text="HEX" selected="true" />
                 <TextField fx:id="sendTextField" HBox.hgrow="ALWAYS" promptText="Enter data to send..." />
-                <CheckBox fx:id="appendNewlineCheckBox" text="\r\n" />
+                <CheckBox fx:id="appendNewlineCheckBox" text="CR+LF" />
                 <Button fx:id="sendButton" onAction="#onSend" defaultButton="true">
                     <graphic><FontIcon iconLiteral="mdi2s-send" /></graphic>
                     Send
