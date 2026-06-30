@@ -44,8 +44,8 @@
         <ToggleButton fx:id="logAsciiToggle" text="ASCII" />
     </ToolBar>
 
-    <SplitPane dividerPositions="0.25" VBox.vgrow="ALWAYS">
-        <VBox spacing="8" minWidth="180">
+    <SplitPane dividerPositions="0.18" VBox.vgrow="ALWAYS">
+        <VBox spacing="8" minWidth="140">
             <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
             <Label text="Port Status" styleClass="section-title" />
             <Label fx:id="statusLabel" text="Disconnected" wrapText="true" />
