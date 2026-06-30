@@ -83,9 +83,9 @@ class FileLogServiceTest {
         service.log(new byte[]{0x42}, 0, 1, Direction.RX);
         service.stop();
 
-        String content = Files.readString(file);
-        // format: [HH:mm:ss.SSS RX]
-        assertTrue(content.matches("\\[\\d{2}:\\d{2}:\\d{2}\\.\\d{3} RX\\].*"));
+        String content = Files.readString(file).trim();
+        // format: [HH:mm:ss.SSS RX] followed by payload
+        assertTrue(content.matches("\\[\\d{2}:\\d{2}:\\d{2}\\.\\d{3} RX\\] .*"));
     }
 
     @Test
