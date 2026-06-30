@@ -31,3 +31,28 @@
     -fx-border-color: #dddddd;
     -fx-border-width: 0 0 1px 0;
 }
+.preset-list-view {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+}
+.preset-list-view .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 6 4 6 4;
+    -fx-cursor: hand;
+}
+.preset-list-view .list-cell:hover {
+    -fx-background-color: #e8f0fe;
+}
+.preset-list-view .list-cell:selected {
+    -fx-background-color: #d2e3fc;
+}
+.preset-name {
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+    -fx-text-fill: #333333;
+}
+.preset-data {
+    -fx-font-size: 10px;
+    -fx-text-fill: #888888;
+    -fx-font-family: "Consolas", "Monaco", "Courier New", monospace;
+}

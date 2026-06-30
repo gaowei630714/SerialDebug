@@ -8,15 +8,25 @@ import io.github.serialdebug.core.serial.SerialConfig;
 import io.github.serialdebug.core.serial.SerialPortInfo;
 import io.github.serialdebug.core.serial.SerialService;
 import javafx.application.Platform;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.TextFieldTableCell;
+import javafx.scene.layout.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import io.github.serialdebug.core.log.Direction;
 import io.github.serialdebug.core.log.FileLogService;
 import io.github.serialdebug.core.log.LogFormat;
 import io.github.serialdebug.core.log.LogService;
+import io.github.serialdebug.ui.preset.JsonPresetService;
+import io.github.serialdebug.ui.preset.Preset;
+import io.github.serialdebug.ui.preset.PresetService;
 import java.io.IOException;
 import java.net.URL;
 import java.time.LocalTime;
@@ -54,12 +64,16 @@ public class MainController implements Initializable {
     @FXML private Label loggingStatusLabel;
     @FXML private Label statusRxLabel;
     @FXML private Label statusTxLabel;
+    @FXML private ListView<Preset> presetListView;
+    @FXML private Button editPresetsButton;
 
     private final SerialService serialService = new JSerialCommService();
     private final DataParser hexParser = new HexParser();
     private final DataParser asciiParser = new AsciiParser();
     private final AtomicBoolean isOpen = new AtomicBoolean(false);
     private final LogService logService = new FileLogService();
+    private final PresetService presetService = new JsonPresetService();
+    private final ObservableList<Preset> presets = FXCollections.observableArrayList();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -87,6 +101,10 @@ public class MainController implements Initializable {
         asciiToggle.selectedProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal) hexToggle.setSelected(false);
         });
+
+        // Load presets and bind to the left-panel list view
+        presets.setAll(presetService.load());
+        setupPresetListView();
     }
 
     @FXML
@@ -245,6 +263,166 @@ public class MainController implements Initializable {
             updateStats();
         } catch (IOException e) {
             showError("Failed to send data", e);
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Command presets
+    // ---------------------------------------------------------------
+
+    private void setupPresetListView() {
+        presetListView.setItems(presets);
+        presetListView.setCellFactory(lv -> new ListCell<>() {
+            private final VBox content = new VBox(2);
+            private final Label nameLabel = new Label();
+            private final Label dataLabel = new Label();
+
+            {
+                nameLabel.getStyleClass().add("preset-name");
+                dataLabel.getStyleClass().add("preset-data");
+                dataLabel.setWrapText(false);
+                dataLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
+                content.getChildren().addAll(nameLabel, dataLabel);
+            }
+
+            @Override
+            protected void updateItem(Preset item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                    setText(null);
+                    setTooltip(null);
+                    setOnMouseClicked(null);
+                } else {
+                    nameLabel.setText(item.getName());
+                    dataLabel.setText(item.getData());
+                    setGraphic(content);
+                    setTooltip(new Tooltip(item.getData()));
+                    setOnMouseClicked(e -> sendTextField.setText(item.getData()));
+                }
+            }
+        });
+    }
+
+    @FXML
+    private void onEditPresets() {
+        openEditDialog();
+    }
+
+    private void openEditDialog() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("编辑指令预设");
+        dialog.initOwner(editPresetsButton.getScene().getWindow());
+
+        DialogPane dialogPane = dialog.getDialogPane();
+        dialogPane.getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        TableView<Preset> table = new TableView<>();
+        table.setItems(presets);
+        table.setEditable(true);
+        table.setPrefHeight(300);
+        table.setPrefWidth(480);
+
+        TableColumn<Preset, String> nameCol = new TableColumn<>("名称");
+        nameCol.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getName()));
+        nameCol.setCellFactory(col -> new PresetTextFieldCell());
+        nameCol.setOnEditCommit(e -> e.getRowValue().setName(e.getNewValue()));
+        nameCol.setPrefWidth(160);
+
+        TableColumn<Preset, String> dataCol = new TableColumn<>("数据");
+        dataCol.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getData()));
+        dataCol.setCellFactory(col -> new PresetTextFieldCell());
+        dataCol.setOnEditCommit(e -> e.getRowValue().setData(e.getNewValue()));
+        dataCol.setPrefWidth(260);
+
+        TableColumn<Preset, Void> actionCol = new TableColumn<>("操作");
+        actionCol.setPrefWidth(60);
+        actionCol.setCellFactory(col -> new TableCell<>() {
+            private final Button delBtn = new Button("删除");
+            {
+                delBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #e74c3c; -fx-cursor: hand;");
+                delBtn.setOnAction(e -> {
+                    Preset p = getTableRow().getItem();
+                    if (p != null) presets.remove(p);
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : delBtn);
+            }
+        });
+
+        table.getColumns().addAll(nameCol, dataCol, actionCol);
+
+        Button addRowBtn = new Button("+ 新增");
+        addRowBtn.setOnAction(e -> presets.add(new Preset("新预设", "")));
+
+        VBox content = new VBox(8, table, addRowBtn);
+        content.setPadding(new Insets(8, 0, 0, 0));
+
+        dialogPane.setContent(content);
+        dialogPane.setPrefSize(520, 420);
+
+        dialog.showAndWait().ifPresent(result -> {
+            if (result == ButtonType.OK) {
+                presets.removeIf(p -> (p.getName() == null || p.getName().isBlank())
+                        && (p.getData() == null || p.getData().isBlank()));
+                presetService.save(presets);
+            }
+        });
+    }
+
+    /**
+     * A TextFieldTableCell variant that commits its value when focus is lost,
+     * preventing data loss when the user edits a cell and clicks OK without
+     * pressing Enter.
+     */
+    private static class PresetTextFieldCell extends TableCell<Preset, String> {
+        private final TextField textField = new TextField();
+
+        PresetTextFieldCell() {
+            textField.setOnAction(e -> commitEdit(textField.getText()));
+            textField.focusedProperty().addListener((obs, oldVal, newVal) -> {
+                if (!newVal && isEditing()) {
+                    commitEdit(textField.getText());
+                }
+            });
+        }
+
+        @Override
+        public void startEdit() {
+            super.startEdit();
+            if (isEmpty()) return;
+            textField.setText(getItem());
+            setGraphic(textField);
+            setText(null);
+            textField.requestFocus();
+            textField.selectAll();
+        }
+
+        @Override
+        public void cancelEdit() {
+            super.cancelEdit();
+            setText(getItem());
+            setGraphic(null);
+        }
+
+        @Override
+        protected void updateItem(String item, boolean empty) {
+            super.updateItem(item, empty);
+            if (empty || item == null) {
+                setText(null);
+                setGraphic(null);
+            } else if (isEditing()) {
+                if (textField != null) textField.setText(item);
+                setGraphic(textField);
+                setText(null);
+            } else {
+                setText(item);
+                setGraphic(null);
+            }
         }
     }
 

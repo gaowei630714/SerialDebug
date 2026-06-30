@@ -44,7 +44,7 @@
         <ToggleButton fx:id="logAsciiToggle" text="ASCII" />
     </ToolBar>
 
-    <SplitPane dividerPositions="0.18" VBox.vgrow="ALWAYS">
+    <SplitPane dividerPositions="0.25" VBox.vgrow="ALWAYS">
         <VBox spacing="8" minWidth="140">
             <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
             <Label text="Port Status" styleClass="section-title" />
@@ -53,7 +53,15 @@
             <Label text="Statistics" styleClass="section-title" />
             <Label fx:id="rxCountLabel" text="RX: 0 bytes" />
             <Label fx:id="txCountLabel" text="TX: 0 bytes" />
-            <VBox VBox.vgrow="ALWAYS" />
+            <Separator />
+            <HBox alignment="CENTER_LEFT" spacing="4">
+                <Label text="指令预设" styleClass="section-title" />
+                <Pane HBox.hgrow="ALWAYS" />
+                <Button fx:id="editPresetsButton" onAction="#onEditPresets">
+                    <graphic><FontIcon iconLiteral="mdi2p-pencil" /></graphic>
+                </Button>
+            </HBox>
+            <ListView fx:id="presetListView" VBox.vgrow="ALWAYS" styleClass="preset-list-view" />
         </VBox>
         <VBox spacing="0">
             <TabPane tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
@@ -68,7 +76,7 @@
             <HBox spacing="8" alignment="CENTER_LEFT" styleClass="send-area">
                 <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
                 <ToggleButton fx:id="hexModeToggle" text="HEX" selected="true" />
-                <TextField fx:id="sendTextField" HBox.hgrow="ALWAYS" promptText="Enter data to send..." />
+                <TextField fx:id="sendTextField" HBox.hgrow="ALWAYS" prefHeight="40" promptText="Enter data to send..." />
                 <CheckBox fx:id="appendNewlineCheckBox" text="CR+LF" />
                 <Button fx:id="sendButton" onAction="#onSend" defaultButton="true">
                     <graphic><FontIcon iconLiteral="mdi2s-send" /></graphic>
