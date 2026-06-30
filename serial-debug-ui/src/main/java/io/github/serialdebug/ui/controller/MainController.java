@@ -11,6 +11,12 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
+import io.github.serialdebug.core.log.Direction;
+import io.github.serialdebug.core.log.FileLogService;
+import io.github.serialdebug.core.log.LogFormat;
+import io.github.serialdebug.core.log.LogService;
 import java.io.IOException;
 import java.net.URL;
 import java.time.LocalTime;
@@ -39,7 +45,13 @@ public class MainController implements Initializable {
     @FXML private TextField sendTextField;
     @FXML private CheckBox appendNewlineCheckBox;
     @FXML private Button sendButton;
+    @FXML private Button clearButton;
+    @FXML private Button startLoggingButton;
+    @FXML private Button stopLoggingButton;
+    @FXML private ToggleButton logHexToggle;
+    @FXML private ToggleButton logAsciiToggle;
     @FXML private Label connectionStatusLabel;
+    @FXML private Label loggingStatusLabel;
     @FXML private Label statusRxLabel;
     @FXML private Label statusTxLabel;
 
@@ -47,6 +59,7 @@ public class MainController implements Initializable {
     private final DataParser hexParser = new HexParser();
     private final DataParser asciiParser = new AsciiParser();
     private final AtomicBoolean isOpen = new AtomicBoolean(false);
+    private final LogService logService = new FileLogService();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -64,6 +77,16 @@ public class MainController implements Initializable {
         refreshPortList();
         sendButton.disableProperty().bind(
                 javafx.beans.binding.Bindings.not(openCloseButton.disabledProperty()));
+
+        // Logging format toggles: mutually exclusive
+        ToggleButton hexToggle = logHexToggle;
+        ToggleButton asciiToggle = logAsciiToggle;
+        hexToggle.selectedProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal) asciiToggle.setSelected(false);
+        });
+        asciiToggle.selectedProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal) hexToggle.setSelected(false);
+        });
     }
 
     @FXML
@@ -81,6 +104,52 @@ public class MainController implements Initializable {
         } catch (Exception e) {
             showError("Failed to list ports", e);
         }
+    }
+
+    @FXML
+    private void onClear() {
+        hexViewArea.clear();
+        asciiViewArea.clear();
+    }
+
+    @FXML
+    private void onStartLogging() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save Log File");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Log Files", "*.log", "*.txt"),
+                new FileChooser.ExtensionFilter("All Files", "*.*")
+        );
+        fileChooser.setInitialFileName("serial_" +
+                java.time.LocalDateTime.now().format(
+                        java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) +
+                ".log");
+        Stage stage = (Stage) startLoggingButton.getScene().getWindow();
+        java.io.File file = fileChooser.showSaveDialog(stage);
+        if (file == null) {
+            return;
+        }
+        try {
+            LogFormat chosenFormat = logAsciiToggle.isSelected() ? LogFormat.ASCII : LogFormat.HEX;
+            logService.start(file.toPath(), chosenFormat);
+            startLoggingButton.setDisable(true);
+            stopLoggingButton.setDisable(false);
+            logHexToggle.setDisable(true);
+            logAsciiToggle.setDisable(true);
+            updateLoggingStatus();
+        } catch (IOException e) {
+            showError("Failed to start logging", e);
+        }
+    }
+
+    @FXML
+    private void onStopLogging() {
+        logService.stop();
+        startLoggingButton.setDisable(false);
+        stopLoggingButton.setDisable(true);
+        logHexToggle.setDisable(false);
+        logAsciiToggle.setDisable(false);
+        updateLoggingStatus();
     }
 
     @FXML
@@ -163,11 +232,15 @@ public class MainController implements Initializable {
             String timestamp = LocalTime.now().format(TIME_FORMATTER);
             String hexStr = hexParser.decode(data, 0, data.length);
             String asciiStr = asciiParser.decode(data, 0, data.length);
+            final byte[] logData = data;
             Platform.runLater(() -> {
                 hexViewArea.appendText("[" + timestamp + " TX] " + hexStr + "\n");
                 asciiViewArea.appendText("[" + timestamp + " TX] " + asciiStr + "\n");
                 hexViewArea.setScrollTop(Double.MAX_VALUE);
                 asciiViewArea.setScrollTop(Double.MAX_VALUE);
+                if (logService.isLogging()) {
+                    logService.log(logData, 0, logData.length, Direction.TX);
+                }
             });
             updateStats();
         } catch (IOException e) {
@@ -187,6 +260,9 @@ public class MainController implements Initializable {
             hexViewArea.setScrollTop(Double.MAX_VALUE);
             asciiViewArea.setScrollTop(Double.MAX_VALUE);
             updateStats();
+            if (logService.isLogging()) {
+                logService.log(data, 0, data.length, Direction.RX);
+            }
         });
     }
 
@@ -198,7 +274,17 @@ public class MainController implements Initializable {
             txCountLabel.setText("TX: " + tx + " bytes");
             statusRxLabel.setText("RX: " + rx);
             statusTxLabel.setText("TX: " + tx);
+            updateLoggingStatus();
         });
+    }
+
+    private void updateLoggingStatus() {
+        if (logService.isLogging()) {
+            loggingStatusLabel.setText("Recording: " + logService.getCurrentFile().getFileName()
+                    + " (" + (logService.getBytesLogged() / 1024) + " KB)");
+        } else {
+            loggingStatusLabel.setText("Not recording");
+        }
     }
 
     private void appendStatus(String message) {
