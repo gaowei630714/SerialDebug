@@ -56,7 +56,7 @@
             <VBox VBox.vgrow="ALWAYS" />
         </VBox>
         <VBox spacing="0">
-            <TabPane tabClosingPolicy="UNAVAILABLE">
+            <TabPane tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
                 <Tab text="HEX">
                     <TextArea fx:id="hexViewArea" editable="false" styleClass="mono-text-area" />
                 </Tab>
