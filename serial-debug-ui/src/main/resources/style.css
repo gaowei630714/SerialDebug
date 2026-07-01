@@ -56,3 +56,7 @@
     -fx-text-fill: #888888;
     -fx-font-family: "Consolas", "Monaco", "Courier New", monospace;
 }
+.btn-danger {
+    -fx-background-color: #e74c3c;
+    -fx-text-fill: white;
+}

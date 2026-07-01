@@ -229,11 +229,11 @@ public class MainController implements Initializable {
     private void updatePortState(boolean connected) {
         if (connected) {
             openCloseButton.setText("Close");
-            openCloseButton.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white;");
+            openCloseButton.getStyleClass().add("btn-danger");
             connectionStatusLabel.setText("Connected: " + serialService.getCurrentConfig());
         } else {
             openCloseButton.setText("Open");
-            openCloseButton.setStyle("");
+            openCloseButton.getStyleClass().remove("btn-danger");
             connectionStatusLabel.setText("Disconnected");
         }
     }
