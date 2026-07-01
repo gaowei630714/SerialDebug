@@ -167,3 +167,40 @@ jlink --module-path $JAVA_HOME/jmods --add-modules java.base,java.desktop,javafx
 ```bash
 sudo usermod -a -G dialout $USER  # 重新登录生效
 ```
+
+
+
+## 贡献 / Contributing
+
+欢迎贡献！请遵循以下步骤 / Contributions are welcome! Please follow these steps:
+
+1. Fork 本仓库 / Fork this repository
+2. 创建特性分支 / Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. 提交变更 / Commit changes (`git commit -m "feat: add amazing feature"`)
+4. 推送分支 / Push to the branch (`git push origin feature/amazing-feature`)
+5. 创建 Pull Request / Open a Pull Request
+
+> 提交信息风格遵循 [Conventional Commits](https://www.conventionalcommits.org/) /
+> Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)
+
+---
+
+## 许可证 / License
+
+[Apache License 2.0](LICENSE) — 自由使用、修改、分发，包括商业用途 /
+Free to use, modify, and distribute, including commercial purposes.
+
+---
+
+## 致谢 / Acknowledgments
+
+- [jSerialComm](https://fazecast.github.io/jSerialComm/) — 跨平台串口通信库
+- [JavaFX](https://openjfx.io/) — 桌面 GUI 框架
+- [Ikonli](https://github.com/kordamp/ikonli) — 图标库
+- [ControlsFX](https://github.com/controlsfx/controlsfx) — JavaFX 增强控件
+
+---
+
+<p align="center">
+  Made with ❤️ by the SerialDebug Community
+</p>

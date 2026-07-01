@@ -81,8 +81,12 @@ public class SessionTabContent extends BorderPane {
                 sendController, displayController::updateStats);
         fileSendController.setPortOpen(false);
 
-        fileSendBtn.setOnAction(e -> fileSendController.onFileSend());
-        cancelFileSendBtn.setOnAction(e -> fileSendController.onCancelFileSend());
+        fileSendBtn.setOnAction(e -> {
+            if (fileSendController != null) fileSendController.onFileSend();
+        });
+        cancelFileSendBtn.setOnAction(e -> {
+            if (fileSendController != null) fileSendController.onCancelFileSend();
+        });
 
         // ── LogController (deferred: needs Stage from scene) ──
         Platform.runLater(() -> {
@@ -198,6 +202,10 @@ public class SessionTabContent extends BorderPane {
         ToggleButton caseToggle = new ToggleButton("Aa");
         Button clearBtn = new Button("Clear", new FontIcon("mdi2c-close"));
         Button pauseBtn = new Button("Pause", new FontIcon("mdi2p-pause"));
+        // Pause button: toggles auto-scroll via DisplayController (wired after controller creation)
+        pauseBtn.setOnAction(e -> {
+            if (displayController != null) displayController.onPauseScroll();
+        });
 
         ToolBar searchBar = new ToolBar(clearBtn, pauseBtn, new Separator(),
                 searchField, filterToggle, caseToggle);
