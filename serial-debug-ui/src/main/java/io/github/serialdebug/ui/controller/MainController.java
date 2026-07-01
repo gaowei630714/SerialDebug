@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -74,6 +75,11 @@ public class MainController implements Initializable {
     private final LogService logService = new FileLogService();
     private final PresetService presetService = new JsonPresetService();
     private final ObservableList<Preset> presets = FXCollections.observableArrayList();
+
+    private record BatchEntry(String timestamp, String hex, String ascii, Direction dir) {}
+
+    private final List<BatchEntry> batchBuffer = new ArrayList<>();
+    private final AtomicBoolean batchPending = new AtomicBoolean(false);
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -185,12 +191,21 @@ public class MainController implements Initializable {
             showWarning("Please select a serial port");
             return;
         }
+        Integer baudRate = baudRateCombo.getValue();
+        if (baudRate == null) { showWarning("Please select baud rate"); return; }
+        Integer dataBits = dataBitsCombo.getValue();
+        if (dataBits == null) { showWarning("Please select data bits"); return; }
+        Integer stopBits = stopBitsCombo.getValue();
+        if (stopBits == null) { showWarning("Please select stop bits"); return; }
+        SerialConfig.Parity parity = parityCombo.getValue();
+        if (parity == null) { showWarning("Please select parity"); return; }
+
         SerialConfig config = new SerialConfig();
         config.setPortName(selectedPort.getSystemPortName());
-        config.setBaudRate(baudRateCombo.getValue());
-        config.setDataBits(dataBitsCombo.getValue());
-        config.setStopBits(stopBitsCombo.getValue());
-        config.setParity(parityCombo.getValue());
+        config.setBaudRate(baudRate);
+        config.setDataBits(dataBits);
+        config.setStopBits(stopBits);
+        config.setParity(parity);
         try {
             serialService.open(config);
             isOpen.set(true);
@@ -250,15 +265,20 @@ public class MainController implements Initializable {
             String timestamp = LocalTime.now().format(TIME_FORMATTER);
             String hexStr = hexParser.decode(data, 0, data.length);
             String asciiStr = asciiParser.decode(data, 0, data.length);
-            final byte[] logData = data;
+
+            // Write log before UI update (low-frequency TX, acceptable on JavaFX thread)
+            if (logService.isLogging()) {
+                logService.log(data, 0, data.length, Direction.TX);
+            }
+
+            final String ts = timestamp;
+            final String hexDisplay = hexStr;
+            final String asciiDisplay = asciiStr;
             Platform.runLater(() -> {
-                hexViewArea.appendText("[" + timestamp + " TX] " + hexStr + "\n");
-                asciiViewArea.appendText("[" + timestamp + " TX] " + asciiStr + "\n");
+                hexViewArea.appendText("[" + ts + " TX] " + hexDisplay + "\n");
+                asciiViewArea.appendText("[" + ts + " TX] " + asciiDisplay + "\n");
                 hexViewArea.setScrollTop(Double.MAX_VALUE);
                 asciiViewArea.setScrollTop(Double.MAX_VALUE);
-                if (logService.isLogging()) {
-                    logService.log(logData, 0, logData.length, Direction.TX);
-                }
             });
             updateStats();
         } catch (IOException e) {
@@ -430,18 +450,43 @@ public class MainController implements Initializable {
         String timestamp = LocalTime.now().format(TIME_FORMATTER);
         String hexStr = hexParser.decode(data, 0, data.length);
         String asciiStr = asciiParser.decode(data, 0, data.length);
-        Platform.runLater(() -> {
+
+        // Write log on listener thread (not UI thread)
+        if (logService.isLogging()) {
+            logService.log(data, 0, data.length, Direction.RX);
+        }
+
+        // Batch UI update: coalesce multiple rapid events into one Platform.runLater
+        synchronized (batchBuffer) {
+            batchBuffer.add(new BatchEntry(timestamp, hexStr, asciiStr, Direction.RX));
+        }
+        if (batchPending.compareAndSet(false, true)) {
+            Platform.runLater(this::flushBatch);
+        }
+    }
+
+    private void flushBatch() {
+        List<BatchEntry> entries;
+        synchronized (batchBuffer) {
+            entries = new ArrayList<>(batchBuffer);
+            batchBuffer.clear();
+        }
+        for (BatchEntry e : entries) {
             if (hexViewArea.getLength() > 1_000_000) hexViewArea.clear();
             if (asciiViewArea.getLength() > 1_000_000) asciiViewArea.clear();
-            hexViewArea.appendText("[" + timestamp + " RX] " + hexStr + "\n");
-            asciiViewArea.appendText("[" + timestamp + " RX] " + asciiStr + "\n");
-            hexViewArea.setScrollTop(Double.MAX_VALUE);
-            asciiViewArea.setScrollTop(Double.MAX_VALUE);
-            updateStats();
-            if (logService.isLogging()) {
-                logService.log(data, 0, data.length, Direction.RX);
+            hexViewArea.appendText("[" + e.timestamp + " " + e.dir + "] " + e.hex + "\n");
+            asciiViewArea.appendText("[" + e.timestamp + " " + e.dir + "] " + e.ascii + "\n");
+        }
+        hexViewArea.setScrollTop(Double.MAX_VALUE);
+        asciiViewArea.setScrollTop(Double.MAX_VALUE);
+        updateStats();
+        batchPending.set(false);
+        // Re-arm if new data arrived during flush (race-safe)
+        synchronized (batchBuffer) {
+            if (!batchBuffer.isEmpty() && batchPending.compareAndSet(false, true)) {
+                Platform.runLater(this::flushBatch);
             }
-        });
+        }
     }
 
     private void updateStats() {
