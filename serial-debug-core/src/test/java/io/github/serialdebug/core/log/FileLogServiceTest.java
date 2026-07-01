@@ -126,13 +126,16 @@ class FileLogServiceTest {
         Path file = tempDir.resolve("split.log");
         service.start(file, LogFormat.ASCII);
 
-        // Write enough data to exceed threshold (each line is ~30+ bytes)
         for (int i = 0; i < 10; i++) {
             service.log("AAAAAAAAAAAAAAAAAA".getBytes(), 0, 18, Direction.RX);
         }
-        service.stop();
 
-        // A split file should exist
-        assertTrue(Files.exists(tempDir.resolve("split_1.log")));
+        long totalLogged = service.getBytesLogged();
+        assertTrue(totalLogged > 30, "bytesLogged should exceed split threshold");
+        assertTrue(Files.exists(tempDir.resolve("split_1.log")),
+                "split_1.log should exist after split");
+
+        service.stop();
     }
+
 }
