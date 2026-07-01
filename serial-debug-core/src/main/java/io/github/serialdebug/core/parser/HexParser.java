@@ -26,13 +26,7 @@ public class HexParser implements DataParser {
         if (data == null || length == 0) {
             return "";
         }
-        StringBuilder sb = new StringBuilder(length * 3);
-        for (int i = offset; i < offset + length; i++) {
-            if (i > offset) {
-                sb.append(' ');
-            }
-            sb.append(String.format("%02X", data[i]));
-        }
-        return sb.toString();
+        return HexFormat.of().withUpperCase().withDelimiter(" ")
+                .formatHex(data, offset, offset + length);
     }
 }
