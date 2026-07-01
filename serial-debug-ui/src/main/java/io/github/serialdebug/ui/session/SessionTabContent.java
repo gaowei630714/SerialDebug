@@ -3,8 +3,12 @@ package io.github.serialdebug.ui.session;
 import io.github.serialdebug.core.log.FileLogService;
 import io.github.serialdebug.core.log.LogService;
 import io.github.serialdebug.core.serial.SerialService;
+import io.github.serialdebug.core.parser.HexParser;
+import io.github.serialdebug.core.parser.AsciiParser;
 import io.github.serialdebug.core.util.RateCalculator;
 import io.github.serialdebug.ui.controller.*;
+import io.github.serialdebug.ui.preset.JsonPresetService;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
@@ -13,7 +17,7 @@ import org.kordamp.ikonli.javafx.FontIcon;
 
 /**
  * Builds the complete UI content for one serial session within a tab.
- * Owns per-session controllers wired to this session's SerialService.
+ * Owns per-session controllers: toolbar, send, file-send, display, log, status-bar.
  */
 public class SessionTabContent extends BorderPane {
 
@@ -25,53 +29,82 @@ public class SessionTabContent extends BorderPane {
     private FileSendController fileSendController;
     private LogController logController;
 
-    // Session-specific instances (one per session)
     private final SerialService serialService;
     private final LogService logService = new FileLogService();
     private final RateCalculator rxRateCalc = new RateCalculator();
     private final RateCalculator txRateCalc = new RateCalculator();
 
-    public SessionTabContent(SerialSession session) {
+    // File send controls (created per-session inside send area)
+    private final Button fileSendBtn = new Button("Send File", new FontIcon("mdi2f-file"));
+    private final Label fileSendProgress = new Label("");
+    private final Button cancelFileSendBtn = new Button("Cancel");
+    private final Stage stage;
+
+    public SessionTabContent(SerialSession session,
+                             ToggleButton logHexToggle, ToggleButton logAsciiToggle,
+                             Button startLoggingButton, Button stopLoggingButton,
+                             Label loggingStatusLabel) {
         this.session = session;
         this.serialService = session.getSerialService();
-        buildUI();
+        this.stage = null; // will get from a control's scene
+        buildUI(logHexToggle, logAsciiToggle, startLoggingButton, stopLoggingButton, loggingStatusLabel);
     }
 
-    private void buildUI() {
+    private void buildUI(ToggleButton logHexToggle, ToggleButton logAsciiToggle,
+                         Button startLoggingButton, Button stopLoggingButton,
+                         Label loggingStatusLabel) {
         VBox root = new VBox(0);
 
-        // ── Port config bar ────────────────────────────────────────────────
         ToolBar portBar = createPortBar();
         root.getChildren().add(portBar);
 
-        // ── Main content area ───────────────────────────────────────────────
         SplitPane splitPane = new SplitPane();
         splitPane.setDividerPositions(0.25);
 
-        // Left: stats panel
         VBox leftPanel = createStatsPanel();
         splitPane.getItems().add(leftPanel);
 
-        // Right: HEX + ASCII tabs + send area
         VBox rightPanel = createDisplayArea();
         splitPane.getItems().add(rightPanel);
 
         VBox.setVgrow(splitPane, Priority.ALWAYS);
         root.getChildren().add(splitPane);
 
-        // ── Status bar ─────────────────────────────────────────────────────
         HBox statusBar = createStatusBar();
         root.getChildren().add(statusBar);
 
         setCenter(root);
 
-        // Wire serial listener → DisplayController
-        serialService.setDataListener(data -> displayController.onDataReceived(data));
+        // ── File send event wiring (delegate to controller when ready) ──
+        cancelFileSendBtn.setDisable(true);
+        cancelFileSendBtn.setVisible(false);
+        fileSendBtn.setOnAction(e -> {
+            if (fileSendController != null) fileSendController.onFileSend();
+        });
+        cancelFileSendBtn.setOnAction(e -> {
+            if (fileSendController != null) fileSendController.onCancelFileSend();
+        });
 
-        // Wire port state change
+        // ── Defer scene-dependent controller init ──
+        Platform.runLater(() -> {
+            Stage resolvedStage = (Stage) root.getScene().getWindow();
+
+            fileSendController = new FileSendController(
+                    fileSendBtn, fileSendProgress, cancelFileSendBtn,
+                    resolvedStage, sendController, displayController::updateStats);
+            fileSendController.setPortOpen(false);
+
+            logController = new LogController(
+                    startLoggingButton, stopLoggingButton, logHexToggle, logAsciiToggle,
+                    loggingStatusLabel, resolvedStage, logService, displayController::updateStats);
+            logController.initialize();
+        });
+
+        // ── Wire port state change ──
         toolbarController.setOnPortStateChange((connected, config) -> {
             boolean isConnected = connected != null && connected;
             sendController.setPortOpen(isConnected);
+            fileSendController.setPortOpen(isConnected);
             statusBarController.updateConnectionStatus(isConnected, config);
             if (!isConnected) {
                 displayController.resetRateCalcs();
@@ -85,8 +118,7 @@ public class SessionTabContent extends BorderPane {
     }
 
     private ToolBar createPortBar() {
-        ComboBox<io.github.serialdebug.core.serial.SerialPortInfo> portCombo =
-                new ComboBox<>();
+        ComboBox<io.github.serialdebug.core.serial.SerialPortInfo> portCombo = new ComboBox<>();
         portCombo.setPrefWidth(180);
         portCombo.setPromptText("Select port");
 
@@ -96,33 +128,23 @@ public class SessionTabContent extends BorderPane {
 
         ComboBox<Integer> dataBitsCombo = new ComboBox<>();
         dataBitsCombo.setPrefWidth(60);
-
         ComboBox<Integer> stopBitsCombo = new ComboBox<>();
         stopBitsCombo.setPrefWidth(60);
-
-        ComboBox<io.github.serialdebug.core.serial.SerialConfig.Parity> parityCombo =
-                new ComboBox<>();
+        ComboBox<io.github.serialdebug.core.serial.SerialConfig.Parity> parityCombo = new ComboBox<>();
         parityCombo.setPrefWidth(90);
 
-        Button openCloseBtn = new Button("Open");
-        openCloseBtn.setGraphic(new FontIcon("mdi2p-power-plug"));
-
-        Button refreshBtn = new Button();
-        refreshBtn.setGraphic(new FontIcon("mdi2r-refresh"));
+        Button openCloseBtn = new Button("Open", new FontIcon("mdi2p-power-plug"));
+        Button refreshBtn = new Button(null, new FontIcon("mdi2r-refresh"));
 
         Label statusLabel = new Label("Disconnected");
         Label connectionLabel = new Label("Disconnected");
 
         ToolBar portBar = new ToolBar(
-                new Label("Port:"), portCombo,
-                new Separator(), new Label("Baud:"), baudCombo,
-                new Label("Data:"), dataBitsCombo,
-                new Label("Stop:"), stopBitsCombo,
-                new Label("Parity:"), parityCombo,
-                new Separator(), openCloseBtn, refreshBtn
-        );
+                new Label("Port:"), portCombo, new Separator(),
+                new Label("Baud:"), baudCombo, new Label("Data:"), dataBitsCombo,
+                new Label("Stop:"), stopBitsCombo, new Label("Parity:"), parityCombo,
+                new Separator(), openCloseBtn, refreshBtn);
 
-        // Create toolbar controller with these controls
         toolbarController = new ToolbarController(
                 portCombo, baudCombo, dataBitsCombo, stopBitsCombo, parityCombo,
                 openCloseBtn, refreshBtn, statusLabel, connectionLabel, serialService);
@@ -140,9 +162,7 @@ public class SessionTabContent extends BorderPane {
         statusTitle.getStyleClass().add("section-title");
         Label statusLabel = new Label("Disconnected");
         statusLabel.setWrapText(true);
-
         Separator sep1 = new Separator();
-
         Label statsTitle = new Label("Statistics");
         statsTitle.getStyleClass().add("section-title");
         Label rxCountLabel = new Label("RX: 0 bytes");
@@ -153,7 +173,6 @@ public class SessionTabContent extends BorderPane {
         panel.getChildren().addAll(statusTitle, statusLabel, sep1,
                 statsTitle, rxCountLabel, txCountLabel, rxRateLabel, txRateLabel);
 
-        // Status bar controller for this session
         statusBarController = new StatusBarController(
                 null, rxRateLabel, txRateLabel, null, rxRateCalc, txRateCalc);
         statusBarController.initialize();
@@ -164,7 +183,7 @@ public class SessionTabContent extends BorderPane {
     private VBox createDisplayArea() {
         VBox right = new VBox(0);
 
-        // Display tabs
+        // ── Display tabs ──
         TabPane displayTabs = new TabPane();
         displayTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         VBox.setVgrow(displayTabs, Priority.ALWAYS);
@@ -172,30 +191,25 @@ public class SessionTabContent extends BorderPane {
         TextArea hexArea = new TextArea();
         hexArea.setEditable(false);
         hexArea.getStyleClass().add("mono-text-area");
-        Tab hexTab = new Tab("HEX", hexArea);
-
         TextArea asciiArea = new TextArea();
         asciiArea.setEditable(false);
         asciiArea.getStyleClass().add("mono-text-area");
-        Tab asciiTab = new Tab("ASCII", asciiArea);
 
-        displayTabs.getTabs().addAll(hexTab, asciiTab);
+        displayTabs.getTabs().addAll(new Tab("HEX", hexArea), new Tab("ASCII", asciiArea));
 
-        // Search bar
+        // ── Search bar ──
         TextField searchField = new TextField();
         searchField.setPrefWidth(150);
         searchField.setPromptText("Search...");
         ToggleButton filterToggle = new ToggleButton("Filter");
         ToggleButton caseToggle = new ToggleButton("Aa");
-        Button clearBtn = new Button("Clear");
-        clearBtn.setGraphic(new FontIcon("mdi2c-close"));
-        Button pauseBtn = new Button("Pause");
-        pauseBtn.setGraphic(new FontIcon("mdi2p-pause"));
+        Button clearBtn = new Button("Clear", new FontIcon("mdi2c-close"));
+        Button pauseBtn = new Button("Pause", new FontIcon("mdi2p-pause"));
 
         ToolBar searchBar = new ToolBar(clearBtn, pauseBtn, new Separator(),
                 searchField, filterToggle, caseToggle);
 
-        // Send area
+        // ── Send area ──
         VBox sendArea = new VBox(4);
         sendArea.getStyleClass().add("send-area");
         sendArea.setPadding(new Insets(8, 8, 8, 8));
@@ -214,7 +228,6 @@ public class SessionTabContent extends BorderPane {
         HBox sendRow1 = new HBox(8, hexSendToggle, sendText, lineEndingCombo, sendBtn);
         sendRow1.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
-        // Timed send row
         TextField intervalField = new TextField("1000");
         intervalField.setPrefWidth(70);
         TextField countField = new TextField("0");
@@ -226,27 +239,26 @@ public class SessionTabContent extends BorderPane {
                 new Label("Count:"), countField, timerBtn);
         sendRow2.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
-        sendArea.getChildren().addAll(sendRow1, sendRow2);
+        // ── File send row (per-session) ──
+        fileSendProgress.getStyleClass().add("file-send-progress");
+        HBox sendRow3 = new HBox(8, fileSendBtn, fileSendProgress, cancelFileSendBtn);
+        sendRow3.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        sendArea.getChildren().addAll(sendRow1, sendRow2, sendRow3);
 
         right.getChildren().addAll(displayTabs, searchBar, new Separator(), sendArea);
 
-        // ── Create controllers ──────────────────────────────────────────────
-
-        // Display controller for this session
+        // ── Controllers ──
         displayController = new DisplayController(
                 hexArea, asciiArea, pauseBtn,
                 searchField, filterToggle, caseToggle,
-                null, null, // rx/tx labels are in the stats panel (handled by statusBarController)
-                null, null,
-                new io.github.serialdebug.core.parser.HexParser(),
-                new io.github.serialdebug.core.parser.AsciiParser(),
-                new io.github.serialdebug.core.log.FileLogService(),
+                null, null, null, null,
+                new HexParser(), new AsciiParser(), new FileLogService(),
                 serialService, rxRateCalc, txRateCalc);
         displayController.initialize();
 
-        // Send controller for this session
         ListView<io.github.serialdebug.ui.preset.Preset> presetListView = new ListView<>();
-        presetListView.setVisible(false); // hidden in session tab (presets are global)
+        presetListView.setVisible(false);
         Button editPresetsBtn = new Button();
         editPresetsBtn.setVisible(false);
 
@@ -254,12 +266,8 @@ public class SessionTabContent extends BorderPane {
                 sendText, hexSendToggle, lineEndingCombo, sendBtn,
                 intervalField, countField, timerBtn,
                 hexArea, asciiArea, presetListView, editPresetsBtn,
-                serialService,
-                new io.github.serialdebug.core.parser.HexParser(),
-                new io.github.serialdebug.core.parser.AsciiParser(),
-                new io.github.serialdebug.core.log.FileLogService(),
-                txRateCalc,
-                new io.github.serialdebug.ui.preset.JsonPresetService());
+                serialService, new HexParser(), new AsciiParser(), new FileLogService(),
+                txRateCalc, new JsonPresetService());
         sendController.initialize();
 
         return right;
@@ -269,43 +277,10 @@ public class SessionTabContent extends BorderPane {
         HBox statusBar = new HBox(16);
         statusBar.getStyleClass().add("status-bar");
         statusBar.setPadding(new Insets(4, 8, 4, 8));
-
-        Label connLabel = new Label("Disconnected");
-        Pane spacer = new Pane();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        Label rxLabel = new Label("RX: 0");
-        Label txLabel = new Label("TX: 0");
-
-        statusBar.getChildren().addAll(connLabel, spacer, rxLabel, txLabel);
+        statusBar.getChildren().addAll(
+                new Label("Disconnected"),
+                new Pane(), new Label("RX: 0"), new Label("TX: 0"));
         return statusBar;
-    }
-
-    public void initFileSendControllers(Stage stage, Button fileSendButton,
-                                       Label fileSendProgress, Button cancelFileSendButton,
-                                       ToggleButton logHexToggle, ToggleButton logAsciiToggle,
-                                       Button startLoggingButton, Button stopLoggingButton,
-                                       Label loggingStatusLabel) {
-        // File send
-        fileSendController = new FileSendController(
-                fileSendButton, fileSendProgress, cancelFileSendButton,
-                stage, sendController, displayController::updateStats);
-
-        // Log
-        logController = new LogController(
-                startLoggingButton, stopLoggingButton, logHexToggle, logAsciiToggle,
-                loggingStatusLabel, stage, logService, displayController::updateStats);
-        logController.initialize();
-
-        // Disable file send when port is closed
-        fileSendController.setPortOpen(false);
-    }
-
-    public void onFileSend() {
-        if (fileSendController != null) fileSendController.onFileSend();
-    }
-
-    public void onCancelFileSend() {
-        if (fileSendController != null) fileSendController.onCancelFileSend();
     }
 
     public void onStartLogging() {
@@ -316,18 +291,10 @@ public class SessionTabContent extends BorderPane {
         if (logController != null) logController.onStopLogging();
     }
 
-    public void setPortOpenForExtras(boolean open) {
-        if (fileSendController != null) fileSendController.setPortOpen(open);
-    }
-
     public void shutdown() {
-        if (toolbarController != null && toolbarController.isOpen()) {
-            toolbarController.closePort();
-        }
+        if (toolbarController != null && toolbarController.isOpen()) toolbarController.closePort();
         if (sendController != null) sendController.shutdown();
         if (fileSendController != null) fileSendController.shutdown();
         if (statusBarController != null) statusBarController.shutdown();
     }
-
-    public SerialSession getSession() { return session; }
 }
