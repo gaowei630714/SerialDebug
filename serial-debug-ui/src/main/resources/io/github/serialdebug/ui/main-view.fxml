@@ -87,6 +87,20 @@
                 <Tab text="ASCII">
                     <TextArea fx:id="asciiViewArea" editable="false" styleClass="mono-text-area" />
                 </Tab>
+                <Tab text="波形图" fx:id="waveformTab">
+                    <VBox spacing="4">
+                        <padding><Insets top="4" right="4" bottom="4" left="4"/></padding>
+                        <HBox spacing="8" alignment="CENTER_LEFT">
+                            <Label text="提取规则:" />
+                            <TextField fx:id="waveformRuleField" HBox.hgrow="ALWAYS"
+                                       promptText="例: T=([\\d.]+)|H=([\\d.]+)" />
+                            <Button fx:id="waveformApplyButton" text="应用" />
+                            <Button fx:id="waveformClearButton" text="清空" />
+                            <CheckBox fx:id="waveformAutoScrollCheck" text="自动滚动" selected="true" />
+                        </HBox>
+                        <StackPane fx:id="waveformChartPane" VBox.vgrow="ALWAYS" />
+                    </VBox>
+                </Tab>
             </TabPane>
             <Separator />
             <VBox spacing="4" styleClass="send-area">

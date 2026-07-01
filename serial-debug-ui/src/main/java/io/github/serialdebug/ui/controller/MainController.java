@@ -10,16 +10,19 @@ import io.github.serialdebug.core.log.LogService;
 import io.github.serialdebug.core.log.FileLogService;
 import io.github.serialdebug.ui.preset.JsonPresetService;
 import io.github.serialdebug.ui.preset.PresetService;
+import io.github.serialdebug.ui.chart.WaveformController;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
-import javafx.stage.Window;
 
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ResourceBundle;
+import java.util.function.Consumer;
 
 /**
  * Main FXML controller — delegates all domain logic to sub-controllers.
@@ -73,14 +76,25 @@ public class MainController implements Initializable {
     @FXML private Label fileSendProgress;
     @FXML private Button cancelFileSendButton;
 
-    // ── Sub-controllers ──────────────────────────────────────────────────
+    // ── Waveform chart ───────────────────────────────────────────────────
+    @FXML private Tab waveformTab;
+    @FXML private TextField waveformRuleField;
+    @FXML private Button waveformApplyButton;
+    @FXML private Button waveformClearButton;
+    @FXML private CheckBox waveformAutoScrollCheck;
+    @FXML private StackPane waveformChartPane;
 
+    // ── Sub-controllers ──────────────────────────────────────────────────
     private ToolbarController toolbarController;
     private SendController sendController;
     private FileSendController fileSendController;
     private DisplayController displayController;
     private LogController logController;
     private StatusBarController statusBarController;
+    private WaveformController waveformController;
+
+    // Serial data listeners (multiple consumers)
+    private final List<Consumer<byte[]>> dataListeners = new ArrayList<>();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -93,10 +107,7 @@ public class MainController implements Initializable {
         RateCalculator rxRateCalc = new RateCalculator();
         RateCalculator txRateCalc = new RateCalculator();
 
-        // Serial listener → DisplayController
-        serialService.setDataListener(data -> displayController().onDataReceived(data));
-
-        // Create display controller first (needed by serial listener)
+        // Create display controller first
         displayController = new DisplayController(
                 hexViewArea, asciiViewArea, pauseScrollButton,
                 searchField, filterModeToggle, caseSensitiveToggle,
@@ -104,6 +115,7 @@ public class MainController implements Initializable {
                 hexParser, asciiParser, logService, serialService,
                 rxRateCalc, txRateCalc);
         displayController.initialize();
+        dataListeners.add(displayController::onDataReceived);
 
         // Create toolbar controller
         toolbarController = new ToolbarController(
@@ -141,6 +153,30 @@ public class MainController implements Initializable {
                 rxRateCalc, txRateCalc);
         statusBarController.initialize();
 
+        // Create waveform controller
+        waveformController = new WaveformController(null);
+        waveformChartPane.getChildren().add(waveformController.getCanvas());
+        waveformController.getCanvas().widthProperty().bind(waveformChartPane.widthProperty());
+        waveformController.getCanvas().heightProperty().bind(waveformChartPane.heightProperty());
+        waveformController.start();
+        dataListeners.add(waveformController::onDataReceived);
+
+        // Serial listener dispatches to all consumers
+        serialService.setDataListener(data -> {
+            for (Consumer<byte[]> listener : dataListeners) {
+                listener.accept(data);
+            }
+        });
+
+        // Wire waveform tab controls
+        waveformApplyButton.setOnAction(e -> {
+            waveformController.getDataExtractor().clearRules();
+            waveformController.configureFromText(waveformRuleField.getText());
+        });
+        waveformClearButton.setOnAction(e -> waveformController.clear());
+        waveformAutoScrollCheck.selectedProperty().addListener((obs, old, val) ->
+                waveformController.setAutoScroll(val));
+
         // Wire cross-controller callbacks
         toolbarController.setOnPortStateChange((connected, config) -> {
             sendController.setPortOpen(connected);
@@ -159,6 +195,7 @@ public class MainController implements Initializable {
                     sendController.shutdown();
                     fileSendController.shutdown();
                     statusBarController.shutdown();
+                    waveformController.stop();
                 });
             }
         });
@@ -179,10 +216,4 @@ public class MainController implements Initializable {
 
     @FXML private void onStartLogging() { logController.onStartLogging(); }
     @FXML private void onStopLogging() { logController.onStopLogging(); }
-
-    // ── Accessors for sub-controllers (used by initialize wiring) ────────
-
-    private DisplayController displayController() {
-        return displayController;
-    }
 }
