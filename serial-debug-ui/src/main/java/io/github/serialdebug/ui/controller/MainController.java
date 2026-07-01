@@ -61,8 +61,9 @@ public class MainController implements Initializable {
 
     private void addNewSession() {
         SerialSession session = sessionManager.createSession();
+        Stage stage = (Stage) mainTabPane.getScene().getWindow();
         SessionTabContent content = new SessionTabContent(session, logHexToggle, logAsciiToggle,
-                startLoggingButton, stopLoggingButton, loggingStatusLabel);
+                startLoggingButton, stopLoggingButton, loggingStatusLabel, stage);
         session.setTabContent(content);
         session.getTab().setContent(content);
         sessionManager.setActiveSession(session);

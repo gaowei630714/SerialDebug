@@ -257,7 +257,8 @@ public class SendController {
                 javafx.application.Platform.runLater(() -> {
                     timedSendFuture.cancel(false);
                     timedSendFuture = null;
-                    timedSendButton.setText("");
+                    timedSendButton.setText("Timed");
+                    timedSendButton.getStyleClass().remove("btn-active");
                     timedSendButton.setGraphic(new FontIcon("mdi2t-timer"));
                 });
                 return;

@@ -8,7 +8,6 @@ import io.github.serialdebug.core.parser.AsciiParser;
 import io.github.serialdebug.core.util.RateCalculator;
 import io.github.serialdebug.ui.controller.*;
 import io.github.serialdebug.ui.preset.JsonPresetService;
-import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
@@ -42,15 +41,17 @@ public class SessionTabContent extends BorderPane {
     public SessionTabContent(SerialSession session,
                              ToggleButton logHexToggle, ToggleButton logAsciiToggle,
                              Button startLoggingButton, Button stopLoggingButton,
-                             Label loggingStatusLabel) {
+                             Label loggingStatusLabel,
+                             Stage stage) {
         this.session = session;
         this.serialService = session.getSerialService();
-        buildUI(logHexToggle, logAsciiToggle, startLoggingButton, stopLoggingButton, loggingStatusLabel);
+        buildUI(logHexToggle, logAsciiToggle, startLoggingButton, stopLoggingButton, loggingStatusLabel, stage);
     }
 
     private void buildUI(ToggleButton logHexToggle, ToggleButton logAsciiToggle,
                          Button startLoggingButton, Button stopLoggingButton,
-                         Label loggingStatusLabel) {
+                         Label loggingStatusLabel,
+                         Stage stage) {
         VBox root = new VBox(0);
 
         ToolBar portBar = createPortBar();
@@ -73,35 +74,37 @@ public class SessionTabContent extends BorderPane {
 
         setCenter(root);
 
-        // ── File send controller (no stage needed — resolves lazily from button scene) ──
+        // ── Display + Send controllers (created in createDisplayArea) ──
+
+        // ── File send controller ──
         cancelFileSendBtn.setDisable(true);
         cancelFileSendBtn.setVisible(false);
         fileSendController = new FileSendController(
                 fileSendBtn, fileSendProgress, cancelFileSendBtn,
                 sendController, displayController::updateStats);
-        fileSendController.setPortOpen(false);
-
+        // File send: always enabled; checks port status on click
         fileSendBtn.setOnAction(e -> {
-            if (fileSendController != null) fileSendController.onFileSend();
+            if (fileSendController == null) return;
+            if (!toolbarController.isOpen()) {
+                UiHelper.showWarning("请先打开串口");
+                return;
+            }
+            fileSendController.onFileSend();
         });
         cancelFileSendBtn.setOnAction(e -> {
             if (fileSendController != null) fileSendController.onCancelFileSend();
         });
 
-        // ── LogController (deferred: needs Stage from scene) ──
-        Platform.runLater(() -> {
-            Stage resolvedStage = (Stage) root.getScene().getWindow();
-            logController = new LogController(
-                    startLoggingButton, stopLoggingButton, logHexToggle, logAsciiToggle,
-                    loggingStatusLabel, resolvedStage, logService, displayController::updateStats);
-            logController.initialize();
-        });
+        // ── LogController (synchronous — Stage passed from MainController) ──
+        logController = new LogController(
+                startLoggingButton, stopLoggingButton, logHexToggle, logAsciiToggle,
+                loggingStatusLabel, stage, logService, displayController::updateStats);
+        logController.initialize();
 
         // ── Wire port state change ──
         toolbarController.setOnPortStateChange((connected, config) -> {
             boolean isConnected = connected != null && connected;
             sendController.setPortOpen(isConnected);
-            fileSendController.setPortOpen(isConnected);
             statusBarController.updateConnectionStatus(isConnected, config);
             if (!isConnected) {
                 displayController.resetRateCalcs();
@@ -132,6 +135,11 @@ public class SessionTabContent extends BorderPane {
 
         Button openCloseBtn = new Button("Open", new FontIcon("mdi2p-power-plug"));
         Button refreshBtn = new Button(null, new FontIcon("mdi2r-refresh"));
+
+        // Open / Close button
+        openCloseBtn.setOnAction(e -> toolbarController.onOpenClose());
+        // Refresh port list
+        refreshBtn.setOnAction(e -> toolbarController.refreshPortList());
 
         Label statusLabel = new Label("Disconnected");
         Label connectionLabel = new Label("Disconnected");
@@ -202,7 +210,12 @@ public class SessionTabContent extends BorderPane {
         ToggleButton caseToggle = new ToggleButton("Aa");
         Button clearBtn = new Button("Clear", new FontIcon("mdi2c-close"));
         Button pauseBtn = new Button("Pause", new FontIcon("mdi2p-pause"));
-        // Pause button: toggles auto-scroll via DisplayController (wired after controller creation)
+
+        // Clear button: clears display (wired after controller creation below)
+        clearBtn.setOnAction(e -> {
+            if (displayController != null) displayController.onClear();
+        });
+        // Pause button: toggles auto-scroll via DisplayController
         pauseBtn.setOnAction(e -> {
             if (displayController != null) displayController.onPauseScroll();
         });
@@ -233,7 +246,11 @@ public class SessionTabContent extends BorderPane {
         intervalField.setPrefWidth(70);
         TextField countField = new TextField("0");
         countField.setPrefWidth(50);
-        Button timerBtn = new Button(null, new FontIcon("mdi2t-timer"));
+        Button timerBtn = new Button("Timed", new FontIcon("mdi2t-timer"));
+        // Timed send: wires after sendController is created
+        timerBtn.setOnAction(e -> {
+            if (sendController != null) sendController.onTimedSend();
+        });
 
         HBox sendRow2 = new HBox(8,
                 new Label("Interval (ms):"), intervalField,
