@@ -4,7 +4,7 @@ import javafx.application.Platform;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.stage.FileChooser;
-import javafx.stage.Stage;
+import javafx.stage.Window;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,7 +23,6 @@ public class FileSendController {
     private final Button fileSendButton;
     private final Label fileSendProgress;
     private final Button cancelFileSendButton;
-    private final Stage stage;
     private final SendController sendController;
     private final Runnable onSendComplete;
 
@@ -34,13 +33,11 @@ public class FileSendController {
             Button fileSendButton,
             Label fileSendProgress,
             Button cancelFileSendButton,
-            Stage stage,
             SendController sendController,
             Runnable onSendComplete) {
         this.fileSendButton = fileSendButton;
         this.fileSendProgress = fileSendProgress;
         this.cancelFileSendButton = cancelFileSendButton;
-        this.stage = stage;
         this.sendController = sendController;
         this.onSendComplete = onSendComplete;
         this.fileSendExecutor = Executors.newSingleThreadExecutor(r -> {
@@ -67,7 +64,8 @@ public class FileSendController {
                 new FileChooser.ExtensionFilter("HEX", "*.hex"),
                 new FileChooser.ExtensionFilter("Text", "*.txt")
         );
-        File file = fileChooser.showOpenDialog(stage);
+        Window owner = fileSendButton.getScene() != null ? fileSendButton.getScene().getWindow() : null;
+        File file = fileChooser.showOpenDialog(owner);
         if (file == null) return;
 
         boolean binaryMode = !file.getName().toLowerCase().endsWith(".txt");

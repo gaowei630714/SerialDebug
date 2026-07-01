@@ -38,7 +38,6 @@ public class SessionTabContent extends BorderPane {
     private final Button fileSendBtn = new Button("Send File", new FontIcon("mdi2f-file"));
     private final Label fileSendProgress = new Label("");
     private final Button cancelFileSendBtn = new Button("Cancel");
-    private final Stage stage;
 
     public SessionTabContent(SerialSession session,
                              ToggleButton logHexToggle, ToggleButton logAsciiToggle,
@@ -46,7 +45,6 @@ public class SessionTabContent extends BorderPane {
                              Label loggingStatusLabel) {
         this.session = session;
         this.serialService = session.getSerialService();
-        this.stage = null; // will get from a control's scene
         buildUI(logHexToggle, logAsciiToggle, startLoggingButton, stopLoggingButton, loggingStatusLabel);
     }
 
@@ -75,25 +73,20 @@ public class SessionTabContent extends BorderPane {
 
         setCenter(root);
 
-        // ── File send event wiring (delegate to controller when ready) ──
+        // ── File send controller (no stage needed — resolves lazily from button scene) ──
         cancelFileSendBtn.setDisable(true);
         cancelFileSendBtn.setVisible(false);
-        fileSendBtn.setOnAction(e -> {
-            if (fileSendController != null) fileSendController.onFileSend();
-        });
-        cancelFileSendBtn.setOnAction(e -> {
-            if (fileSendController != null) fileSendController.onCancelFileSend();
-        });
+        fileSendController = new FileSendController(
+                fileSendBtn, fileSendProgress, cancelFileSendBtn,
+                sendController, displayController::updateStats);
+        fileSendController.setPortOpen(false);
 
-        // ── Defer scene-dependent controller init ──
+        fileSendBtn.setOnAction(e -> fileSendController.onFileSend());
+        cancelFileSendBtn.setOnAction(e -> fileSendController.onCancelFileSend());
+
+        // ── LogController (deferred: needs Stage from scene) ──
         Platform.runLater(() -> {
             Stage resolvedStage = (Stage) root.getScene().getWindow();
-
-            fileSendController = new FileSendController(
-                    fileSendBtn, fileSendProgress, cancelFileSendBtn,
-                    resolvedStage, sendController, displayController::updateStats);
-            fileSendController.setPortOpen(false);
-
             logController = new LogController(
                     startLoggingButton, stopLoggingButton, logHexToggle, logAsciiToggle,
                     loggingStatusLabel, resolvedStage, logService, displayController::updateStats);
