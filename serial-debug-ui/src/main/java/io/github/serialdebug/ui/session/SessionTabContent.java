@@ -1,12 +1,14 @@
 package io.github.serialdebug.ui.session;
 
+import io.github.serialdebug.core.log.FileLogService;
+import io.github.serialdebug.core.log.LogService;
 import io.github.serialdebug.core.serial.SerialService;
 import io.github.serialdebug.core.util.RateCalculator;
 import io.github.serialdebug.ui.controller.*;
-import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.stage.Stage;
 import org.kordamp.ikonli.javafx.FontIcon;
 
 /**
@@ -20,9 +22,12 @@ public class SessionTabContent extends BorderPane {
     private SendController sendController;
     private DisplayController displayController;
     private StatusBarController statusBarController;
+    private FileSendController fileSendController;
+    private LogController logController;
 
     // Session-specific instances (one per session)
     private final SerialService serialService;
+    private final LogService logService = new FileLogService();
     private final RateCalculator rxRateCalc = new RateCalculator();
     private final RateCalculator txRateCalc = new RateCalculator();
 
@@ -275,11 +280,52 @@ public class SessionTabContent extends BorderPane {
         return statusBar;
     }
 
+    public void initFileSendControllers(Stage stage, Button fileSendButton,
+                                       Label fileSendProgress, Button cancelFileSendButton,
+                                       ToggleButton logHexToggle, ToggleButton logAsciiToggle,
+                                       Button startLoggingButton, Button stopLoggingButton,
+                                       Label loggingStatusLabel) {
+        // File send
+        fileSendController = new FileSendController(
+                fileSendButton, fileSendProgress, cancelFileSendButton,
+                stage, sendController, displayController::updateStats);
+
+        // Log
+        logController = new LogController(
+                startLoggingButton, stopLoggingButton, logHexToggle, logAsciiToggle,
+                loggingStatusLabel, stage, logService, displayController::updateStats);
+        logController.initialize();
+
+        // Disable file send when port is closed
+        fileSendController.setPortOpen(false);
+    }
+
+    public void onFileSend() {
+        if (fileSendController != null) fileSendController.onFileSend();
+    }
+
+    public void onCancelFileSend() {
+        if (fileSendController != null) fileSendController.onCancelFileSend();
+    }
+
+    public void onStartLogging() {
+        if (logController != null) logController.onStartLogging();
+    }
+
+    public void onStopLogging() {
+        if (logController != null) logController.onStopLogging();
+    }
+
+    public void setPortOpenForExtras(boolean open) {
+        if (fileSendController != null) fileSendController.setPortOpen(open);
+    }
+
     public void shutdown() {
         if (toolbarController != null && toolbarController.isOpen()) {
             toolbarController.closePort();
         }
         if (sendController != null) sendController.shutdown();
+        if (fileSendController != null) fileSendController.shutdown();
         if (statusBarController != null) statusBarController.shutdown();
     }
 

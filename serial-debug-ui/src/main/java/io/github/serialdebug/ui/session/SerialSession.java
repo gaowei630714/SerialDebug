@@ -1,14 +1,9 @@
 package io.github.serialdebug.ui.session;
 
 import io.github.serialdebug.core.serial.SerialConfig;
-import io.github.serialdebug.core.serial.SerialPortInfo;
 import io.github.serialdebug.core.serial.SerialService;
 import io.github.serialdebug.core.serial.JSerialCommService;
 import javafx.scene.control.Tab;
-import javafx.scene.control.TabPane;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.function.Consumer;
 
 /**
@@ -23,6 +18,7 @@ public class SerialSession {
     private Tab tab;
     private String displayName;
     private Consumer<byte[]> dataListener;
+    private Object tabContent;
 
     public SerialSession(String sessionId) {
         this.sessionId = sessionId;
@@ -37,6 +33,8 @@ public class SerialSession {
     public void setTab(Tab tab) { this.tab = tab; }
     public String getDisplayName() { return displayName; }
     public void setDisplayName(String name) { this.displayName = name; }
+    public Object getTabContent() { return tabContent; }
+    public void setTabContent(Object tabContent) { this.tabContent = tabContent; }
 
     public boolean isOpen() { return serialService.isOpen(); }
 
