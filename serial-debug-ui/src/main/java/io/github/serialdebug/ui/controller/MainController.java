@@ -28,13 +28,12 @@ public class MainController implements Initializable {
     @FXML private Button stopLoggingButton;
     @FXML private ToggleButton logHexToggle;
     @FXML private ToggleButton logAsciiToggle;
+    @FXML private Label loggingStatusLabel;
 
     private SessionManager sessionManager;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        Stage stage = (Stage) mainTabPane.getScene().getWindow();
-
         // Session manager
         sessionManager = new SessionManager(mainTabPane);
         addTab.setClosable(false);
@@ -62,15 +61,14 @@ public class MainController implements Initializable {
         // Wire global toolbar buttons to forward to active session
         wireGlobalToolbarActions();
 
-        // Window close → shutdown
+        // Defer scene-dependent setup until scene graph is ready
         Platform.runLater(() -> {
+            Stage stage = (Stage) mainTabPane.getScene().getWindow();
             if (stage != null) {
                 stage.setOnCloseRequest(e -> sessionManager.closeAll());
             }
+            addNewSession();
         });
-
-        // Create first session automatically
-        addNewSession();
     }
 
     private void addNewSession() {
@@ -85,7 +83,7 @@ public class MainController implements Initializable {
         Stage stage = (Stage) mainTabPane.getScene().getWindow();
         content.initFileSendControllers(stage, fileSendButton, fileSendProgress,
                 cancelFileSendButton, logHexToggle, logAsciiToggle,
-                startLoggingButton, stopLoggingButton, null);
+                startLoggingButton, stopLoggingButton, loggingStatusLabel);
 
         sessionManager.setActiveSession(session);
     }

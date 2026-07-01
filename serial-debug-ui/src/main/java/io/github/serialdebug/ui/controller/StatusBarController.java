@@ -44,13 +44,18 @@ public class StatusBarController {
 
     public void initialize() {
         var clockFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
-        clockLabel.setText(LocalTime.now().format(clockFormatter));
+        if (clockLabel != null) {
+            clockLabel.setText(LocalTime.now().format(clockFormatter));
+        }
 
         // Update rate labels + clock every 1 second
         rateClockTimer = new Timeline(
                 new KeyFrame(Duration.seconds(1), e -> updateRateLabels()),
-                new KeyFrame(Duration.seconds(1),
-                        e -> clockLabel.setText(LocalTime.now().format(clockFormatter)))
+                new KeyFrame(Duration.seconds(1), e -> {
+                    if (clockLabel != null) {
+                        clockLabel.setText(LocalTime.now().format(clockFormatter));
+                    }
+                })
         );
         rateClockTimer.setCycleCount(Animation.INDEFINITE);
         rateClockTimer.play();

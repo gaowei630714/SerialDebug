@@ -10,21 +10,22 @@
 
     <!-- Global action bar: file send + logging (affect active session) -->
     <ToolBar fx:id="actionBar">
-        <Button fx:id="fileSendButton" onAction="#onFileSend" text="Send File">
+        <Button fx:id="fileSendButton" text="Send File">
             <graphic><FontIcon iconLiteral="mdi2f-file" /></graphic>
         </Button>
         <Label fx:id="fileSendProgress" text="" styleClass="file-send-progress" />
-        <Button fx:id="cancelFileSendButton" onAction="#onCancelFileSend" text="Cancel" disable="true" visible="false" />
+        <Button fx:id="cancelFileSendButton" text="Cancel" disable="true" visible="false" />
         <Separator orientation="VERTICAL" />
-        <Button fx:id="startLoggingButton" onAction="#onStartLogging">
+        <Button fx:id="startLoggingButton">
             <graphic><FontIcon iconLiteral="mdi2c-content-save" /></graphic>
         </Button>
-        <Button fx:id="stopLoggingButton" onAction="#onStopLogging" disable="true">
+        <Button fx:id="stopLoggingButton" disable="true">
             <graphic><FontIcon iconLiteral="mdi2s-stop" /></graphic>
         </Button>
         <Label text="Log:" />
         <ToggleButton fx:id="logHexToggle" text="HEX" selected="true" />
         <ToggleButton fx:id="logAsciiToggle" text="ASCII" />
+        <Label fx:id="loggingStatusLabel" text="Not recording" />
     </ToolBar>
 
     <!-- Session tabs (dynamic, managed by SessionManager) -->
