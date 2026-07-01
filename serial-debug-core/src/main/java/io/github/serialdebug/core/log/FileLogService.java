@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HexFormat;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class FileLogService implements LogService {
@@ -18,12 +19,15 @@ public class FileLogService implements LogService {
     private final long splitThreshold;
     private final ReentrantLock lock = new ReentrantLock();
 
+    private static final HexFormat HEX_FORMAT = HexFormat.of().withUpperCase().withDelimiter(" ");
+
     private BufferedWriter writer;
     private LogFormat format;
     private Path currentFile;
     private Path baseFile;
     private int splitIndex;
-    private long bytesLogged;
+    private long currentFileBytes;
+    private long totalBytesLogged;
 
     public FileLogService() {
         this(DEFAULT_SPLIT_THRESHOLD);
@@ -40,7 +44,8 @@ public class FileLogService implements LogService {
             this.baseFile = file;
             this.splitIndex = 0;
             this.format = format;
-            this.bytesLogged = 0;
+            this.currentFileBytes = 0;
+            this.totalBytesLogged = 0;
             this.currentFile = file;
             this.writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8);
         } finally {
@@ -95,7 +100,9 @@ public class FileLogService implements LogService {
             writer.write(line);
             writer.newLine();
             writer.flush();
-            bytesLogged += line.length() + System.lineSeparator().length();
+            long lineBytes = line.length() + System.lineSeparator().length();
+            currentFileBytes += lineBytes;
+            totalBytesLogged += lineBytes;
             checkAndSplit();
         } catch (IOException e) {
             // On write failure, stop logging to prevent further errors
@@ -105,6 +112,7 @@ public class FileLogService implements LogService {
                 // best effort
             }
             writer = null;
+            currentFile = null;
         } finally {
             lock.unlock();
         }
@@ -114,7 +122,7 @@ public class FileLogService implements LogService {
     public long getBytesLogged() {
         lock.lock();
         try {
-            return bytesLogged;
+            return totalBytesLogged;
         } finally {
             lock.unlock();
         }
@@ -131,17 +139,17 @@ public class FileLogService implements LogService {
     }
 
     private void checkAndSplit() {
-        try {
-            if (currentFile != null && Files.exists(currentFile)
-                    && Files.size(currentFile) >= splitThreshold) {
+        if (currentFileBytes >= splitThreshold) {
+            try {
                 writer.flush();
                 writer.close();
                 splitIndex++;
                 currentFile = generateSplitPath(baseFile, splitIndex);
                 writer = Files.newBufferedWriter(currentFile, StandardCharsets.UTF_8);
+                currentFileBytes = 0;
+            } catch (IOException e) {
+                // If split fails, continue writing to current file
             }
-        } catch (IOException e) {
-            // If split fails, continue writing to current file
         }
     }
 
@@ -161,14 +169,7 @@ public class FileLogService implements LogService {
     }
 
     private String encodeHex(byte[] data, int offset, int length) {
-        StringBuilder sb = new StringBuilder(length * 3);
-        for (int i = offset; i < offset + length; i++) {
-            if (i > offset) {
-                sb.append(' ');
-            }
-            sb.append(String.format("%02X", data[i]));
-        }
-        return sb.toString();
+        return HEX_FORMAT.formatHex(data, offset, offset + length);
     }
 
     private String encodeAscii(byte[] data, int offset, int length) {
