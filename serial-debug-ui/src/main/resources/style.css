@@ -56,7 +56,25 @@
     -fx-text-fill: #888888;
     -fx-font-family: "Consolas", "Monaco", "Courier New", monospace;
 }
+.search-bar {
+    -fx-background-color: #f0f0f0;
+    -fx-border-color: #cccccc;
+    -fx-border-radius: 4;
+    -fx-padding: 4;
+}
+.toggle-button:selected.filter-active {
+    -fx-background-color: #4a90d9;
+    -fx-text-fill: white;
+}
 .btn-danger {
     -fx-background-color: #e74c3c;
     -fx-text-fill: white;
+}
+.btn-warning {
+    -fx-background-color: #f39c12;
+    -fx-text-fill: white;
+}
+.file-send-progress {
+    -fx-font-size: 11px;
+    -fx-text-fill: #555555;
 }

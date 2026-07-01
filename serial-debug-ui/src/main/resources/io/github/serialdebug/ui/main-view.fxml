@@ -28,10 +28,18 @@
         <Button fx:id="refreshButton" onAction="#onRefreshPorts">
             <graphic><FontIcon iconLiteral="mdi2r-refresh" /></graphic>
         </Button>
-        <Separator orientation="VERTICAL" />
+    </ToolBar>
+    <ToolBar fx:id="actionBar">
         <Button fx:id="clearButton" onAction="#onClear" text="Clear">
             <graphic><FontIcon iconLiteral="mdi2c-close" /></graphic>
         </Button>
+        <Button fx:id="pauseScrollButton" onAction="#onPauseScroll" text="Pause">
+            <graphic><FontIcon iconLiteral="mdi2p-pause" /></graphic>
+        </Button>
+        <Separator orientation="VERTICAL" />
+        <TextField fx:id="searchField" prefWidth="150" promptText="Search..." styleClass="search-bar" />
+        <ToggleButton fx:id="filterModeToggle" text="Filter" styleClass="filter-active" />
+        <ToggleButton fx:id="caseSensitiveToggle" text="Aa" styleClass="filter-active" />
         <Separator orientation="VERTICAL" />
         <Button fx:id="startLoggingButton" onAction="#onStartLogging">
             <graphic><FontIcon iconLiteral="mdi2c-content-save" /></graphic>
@@ -42,6 +50,12 @@
         <Label text="Log:" />
         <ToggleButton fx:id="logHexToggle" text="HEX" selected="true" />
         <ToggleButton fx:id="logAsciiToggle" text="ASCII" />
+        <Separator orientation="VERTICAL" />
+        <Button fx:id="fileSendButton" onAction="#onFileSend" text="Send File">
+            <graphic><FontIcon iconLiteral="mdi2f-file" /></graphic>
+        </Button>
+        <Label fx:id="fileSendProgress" text="" styleClass="file-send-progress" />
+        <Button fx:id="cancelFileSendButton" onAction="#onCancelFileSend" text="Cancel" disable="true" visible="false" />
     </ToolBar>
 
     <SplitPane dividerPositions="0.25" VBox.vgrow="ALWAYS">
@@ -53,6 +67,8 @@
             <Label text="Statistics" styleClass="section-title" />
             <Label fx:id="rxCountLabel" text="RX: 0 bytes" />
             <Label fx:id="txCountLabel" text="TX: 0 bytes" />
+            <Label fx:id="rxRateLabel" text="RX rate: 0 B/s" />
+            <Label fx:id="txRateLabel" text="TX rate: 0 B/s" />
             <Separator />
             <HBox alignment="CENTER_LEFT" spacing="4">
                 <Label text="指令预设" styleClass="section-title" />
@@ -73,16 +89,27 @@
                 </Tab>
             </TabPane>
             <Separator />
-            <HBox spacing="8" alignment="CENTER_LEFT" styleClass="send-area">
+            <VBox spacing="4" styleClass="send-area">
                 <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
-                <ToggleButton fx:id="hexModeToggle" text="HEX" selected="true" />
-                <TextField fx:id="sendTextField" HBox.hgrow="ALWAYS" prefHeight="40" promptText="Enter data to send..." />
-                <CheckBox fx:id="appendNewlineCheckBox" text="CR+LF" />
-                <Button fx:id="sendButton" onAction="#onSend" defaultButton="true">
-                    <graphic><FontIcon iconLiteral="mdi2s-send" /></graphic>
-                    Send
-                </Button>
-            </HBox>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <ToggleButton fx:id="hexModeToggle" text="HEX" selected="true" />
+                    <TextField fx:id="sendTextField" HBox.hgrow="ALWAYS" prefHeight="40" promptText="Enter data to send..." />
+                    <ComboBox fx:id="lineEndingCombo" prefWidth="100" />
+                    <Button fx:id="sendButton" onAction="#onSend" defaultButton="true">
+                        <graphic><FontIcon iconLiteral="mdi2s-send" /></graphic>
+                        Send
+                    </Button>
+                </HBox>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label text="Interval (ms):" />
+                    <TextField fx:id="intervalField" prefWidth="70" text="1000" />
+                    <Label text="Count:" />
+                    <TextField fx:id="repeatCountField" prefWidth="50" text="0" />
+                    <Button fx:id="timedSendButton" onAction="#onTimedSend">
+                        <graphic><FontIcon iconLiteral="mdi2t-timer" /></graphic>
+                    </Button>
+                </HBox>
+            </VBox>
         </VBox>
     </SplitPane>
 
@@ -94,5 +121,6 @@
         <Pane HBox.hgrow="ALWAYS" />
         <Label fx:id="statusRxLabel" text="RX: 0" />
         <Label fx:id="statusTxLabel" text="TX: 0" />
+        <Label fx:id="clockLabel" text="" />
     </HBox>
 </VBox>
