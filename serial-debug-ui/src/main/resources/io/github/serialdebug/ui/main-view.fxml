@@ -3,43 +3,18 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <VBox spacing="0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="io.github.serialdebug.ui.controller.MainController">
 
-    <ToolBar fx:id="toolbar">
-        <Label text="Port:" />
-        <ComboBox fx:id="portCombo" prefWidth="180" promptText="Select port" />
-        <Separator orientation="VERTICAL" />
-        <Label text="Baud:" />
-        <ComboBox fx:id="baudRateCombo" prefWidth="100" editable="true" />
-        <Label text="Data:" />
-        <ComboBox fx:id="dataBitsCombo" prefWidth="60" />
-        <Label text="Stop:" />
-        <ComboBox fx:id="stopBitsCombo" prefWidth="60" />
-        <Label text="Parity:" />
-        <ComboBox fx:id="parityCombo" prefWidth="90" />
-        <Separator orientation="VERTICAL" />
-        <Button fx:id="openCloseButton" onAction="#onOpenClose">
-            <graphic><FontIcon iconLiteral="mdi2p-power-plug" /></graphic>
-        </Button>
-        <Button fx:id="refreshButton" onAction="#onRefreshPorts">
-            <graphic><FontIcon iconLiteral="mdi2r-refresh" /></graphic>
-        </Button>
-    </ToolBar>
+    <!-- Global action bar: file send + logging (affect active session) -->
     <ToolBar fx:id="actionBar">
-        <Button fx:id="clearButton" onAction="#onClear" text="Clear">
-            <graphic><FontIcon iconLiteral="mdi2c-close" /></graphic>
+        <Button fx:id="fileSendButton" onAction="#onFileSend" text="Send File">
+            <graphic><FontIcon iconLiteral="mdi2f-file" /></graphic>
         </Button>
-        <Button fx:id="pauseScrollButton" onAction="#onPauseScroll" text="Pause">
-            <graphic><FontIcon iconLiteral="mdi2p-pause" /></graphic>
-        </Button>
-        <Separator orientation="VERTICAL" />
-        <TextField fx:id="searchField" prefWidth="150" promptText="Search..." styleClass="search-bar" />
-        <ToggleButton fx:id="filterModeToggle" text="Filter" styleClass="filter-active" />
-        <ToggleButton fx:id="caseSensitiveToggle" text="Aa" styleClass="filter-active" />
+        <Label fx:id="fileSendProgress" text="" styleClass="file-send-progress" />
+        <Button fx:id="cancelFileSendButton" onAction="#onCancelFileSend" text="Cancel" disable="true" visible="false" />
         <Separator orientation="VERTICAL" />
         <Button fx:id="startLoggingButton" onAction="#onStartLogging">
             <graphic><FontIcon iconLiteral="mdi2c-content-save" /></graphic>
@@ -50,91 +25,13 @@
         <Label text="Log:" />
         <ToggleButton fx:id="logHexToggle" text="HEX" selected="true" />
         <ToggleButton fx:id="logAsciiToggle" text="ASCII" />
-        <Separator orientation="VERTICAL" />
-        <Button fx:id="fileSendButton" onAction="#onFileSend" text="Send File">
-            <graphic><FontIcon iconLiteral="mdi2f-file" /></graphic>
-        </Button>
-        <Label fx:id="fileSendProgress" text="" styleClass="file-send-progress" />
-        <Button fx:id="cancelFileSendButton" onAction="#onCancelFileSend" text="Cancel" disable="true" visible="false" />
     </ToolBar>
 
-    <SplitPane dividerPositions="0.25" VBox.vgrow="ALWAYS">
-        <VBox spacing="8" minWidth="140">
-            <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
-            <Label text="Port Status" styleClass="section-title" />
-            <Label fx:id="statusLabel" text="Disconnected" wrapText="true" />
-            <Separator />
-            <Label text="Statistics" styleClass="section-title" />
-            <Label fx:id="rxCountLabel" text="RX: 0 bytes" />
-            <Label fx:id="txCountLabel" text="TX: 0 bytes" />
-            <Label fx:id="rxRateLabel" text="RX rate: 0 B/s" />
-            <Label fx:id="txRateLabel" text="TX rate: 0 B/s" />
-            <Separator />
-            <HBox alignment="CENTER_LEFT" spacing="4">
-                <Label text="指令预设" styleClass="section-title" />
-                <Pane HBox.hgrow="ALWAYS" />
-                <Button fx:id="editPresetsButton" onAction="#onEditPresets">
-                    <graphic><FontIcon iconLiteral="mdi2p-pencil" /></graphic>
-                </Button>
-            </HBox>
-            <ListView fx:id="presetListView" VBox.vgrow="ALWAYS" styleClass="preset-list-view" />
-        </VBox>
-        <VBox spacing="0">
-            <TabPane tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
-                <Tab text="HEX">
-                    <TextArea fx:id="hexViewArea" editable="false" styleClass="mono-text-area" />
-                </Tab>
-                <Tab text="ASCII">
-                    <TextArea fx:id="asciiViewArea" editable="false" styleClass="mono-text-area" />
-                </Tab>
-                <Tab text="波形图" fx:id="waveformTab">
-                    <VBox spacing="4">
-                        <padding><Insets top="4" right="4" bottom="4" left="4"/></padding>
-                        <HBox spacing="8" alignment="CENTER_LEFT">
-                            <Label text="提取规则:" />
-                            <TextField fx:id="waveformRuleField" HBox.hgrow="ALWAYS"
-                                       promptText="例: T=([\\d.]+)|H=([\\d.]+)" />
-                            <Button fx:id="waveformApplyButton" text="应用" />
-                            <Button fx:id="waveformClearButton" text="清空" />
-                            <CheckBox fx:id="waveformAutoScrollCheck" text="自动滚动" selected="true" />
-                        </HBox>
-                        <StackPane fx:id="waveformChartPane" VBox.vgrow="ALWAYS" />
-                    </VBox>
-                </Tab>
-            </TabPane>
-            <Separator />
-            <VBox spacing="4" styleClass="send-area">
-                <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
-                <HBox spacing="8" alignment="CENTER_LEFT">
-                    <ToggleButton fx:id="hexModeToggle" text="HEX" selected="true" />
-                    <TextField fx:id="sendTextField" HBox.hgrow="ALWAYS" prefHeight="40" promptText="Enter data to send..." />
-                    <ComboBox fx:id="lineEndingCombo" prefWidth="100" />
-                    <Button fx:id="sendButton" onAction="#onSend" defaultButton="true">
-                        <graphic><FontIcon iconLiteral="mdi2s-send" /></graphic>
-                        Send
-                    </Button>
-                </HBox>
-                <HBox spacing="8" alignment="CENTER_LEFT">
-                    <Label text="Interval (ms):" />
-                    <TextField fx:id="intervalField" prefWidth="70" text="1000" />
-                    <Label text="Count:" />
-                    <TextField fx:id="repeatCountField" prefWidth="50" text="0" />
-                    <Button fx:id="timedSendButton" onAction="#onTimedSend">
-                        <graphic><FontIcon iconLiteral="mdi2t-timer" /></graphic>
-                    </Button>
-                </HBox>
-            </VBox>
-        </VBox>
-    </SplitPane>
+    <!-- Session tabs (dynamic, managed by SessionManager) -->
+    <TabPane fx:id="mainTabPane" VBox.vgrow="ALWAYS">
+        <tabs>
+            <Tab text="+" fx:id="addTab"/>
+        </tabs>
+    </TabPane>
 
-    <HBox spacing="16" styleClass="status-bar">
-        <padding><Insets top="4" right="8" bottom="4" left="8"/></padding>
-        <Label fx:id="connectionStatusLabel" text="Disconnected" />
-        <Pane HBox.hgrow="ALWAYS" />
-        <Label fx:id="loggingStatusLabel" text="Not recording" />
-        <Pane HBox.hgrow="ALWAYS" />
-        <Label fx:id="statusRxLabel" text="RX: 0" />
-        <Label fx:id="statusTxLabel" text="TX: 0" />
-        <Label fx:id="clockLabel" text="" />
-    </HBox>
 </VBox>
