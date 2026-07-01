@@ -212,7 +212,8 @@ public class SendController {
             // Stop running timer
             timedSendFuture.cancel(false);
             timedSendFuture = null;
-            timedSendButton.setText("");
+            timedSendButton.setText("Timed");
+            timedSendButton.getStyleClass().remove("btn-active");
             timedSendButton.setGraphic(new FontIcon("mdi2t-timer"));
             return;
         }
@@ -247,6 +248,8 @@ public class SendController {
         }
 
         timedSendRemaining.set(count);
+        timedSendButton.setText("Stop");
+        timedSendButton.getStyleClass().add("btn-active");
         timedSendButton.setGraphic(new FontIcon("mdi2s-stop"));
 
         timedSendFuture = timerExecutor.scheduleAtFixedRate(() -> {

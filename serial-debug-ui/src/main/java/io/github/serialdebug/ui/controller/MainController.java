@@ -81,7 +81,7 @@ public class MainController implements Initializable {
 
     private SessionTabContent getActiveContent() {
         SerialSession session = sessionManager.getActiveSession();
-        if (session != null) return (SessionTabContent) session.getTabContent();
+        if (session != null) return session.getTabContent();
         return null;
     }
 }

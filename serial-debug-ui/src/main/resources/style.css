@@ -74,6 +74,10 @@
     -fx-background-color: #f39c12;
     -fx-text-fill: white;
 }
+.btn-active {
+    -fx-background-color: #27ae60;
+    -fx-text-fill: white;
+}
 .file-send-progress {
     -fx-font-size: 11px;
     -fx-text-fill: #555555;

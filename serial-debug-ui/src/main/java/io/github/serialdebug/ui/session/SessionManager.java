@@ -4,6 +4,7 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import java.util.ArrayList;
 import java.util.List;
+import io.github.serialdebug.ui.session.SessionTabContent;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -46,6 +47,11 @@ public class SessionManager {
      * Close and remove a session.
      */
     public void closeSession(SerialSession session) {
+        // Shutdown per-session resources (timers, executors, animation)
+        SessionTabContent content = session.getTabContent();
+        if (content != null) {
+            content.shutdown();
+        }
         if (session.isOpen()) {
             session.getSerialService().close();
         }
