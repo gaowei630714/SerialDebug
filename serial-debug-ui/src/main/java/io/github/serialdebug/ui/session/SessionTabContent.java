@@ -40,6 +40,8 @@ public class SessionTabContent extends BorderPane {
 
     private final SerialService serialService;
     private final LogService logService = new FileLogService();
+    private final HexParser hexParser = new HexParser();
+    private final AsciiParser asciiParser = new AsciiParser();
     private final RateCalculator rxRateCalc = new RateCalculator();
     private final RateCalculator txRateCalc = new RateCalculator();
 
@@ -269,7 +271,7 @@ public class SessionTabContent extends BorderPane {
                 hexArea, asciiArea, pauseBtn,
                 searchField, filterToggle, caseToggle,
                 null, null, null, null,
-                new HexParser(), new AsciiParser(), new FileLogService(),
+                hexParser, asciiParser, logService,
                 serialService, rxRateCalc, txRateCalc);
         displayController.initialize();
 
@@ -282,7 +284,7 @@ public class SessionTabContent extends BorderPane {
                 sendText, hexSendToggle, lineEndingCombo, sendBtn,
                 intervalField, countField, timerBtn,
                 hexArea, asciiArea, presetListView, editPresetsBtn,
-                serialService, new HexParser(), new AsciiParser(), new FileLogService(),
+                serialService, hexParser, asciiParser, logService,
                 txRateCalc, new JsonPresetService());
         sendController.initialize();
 

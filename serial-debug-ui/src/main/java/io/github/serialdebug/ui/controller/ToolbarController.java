@@ -137,11 +137,7 @@ public class ToolbarController {
             updatePortState(true);
             statusLabel.setText("Connected: " + config);
             // Save to history for next time
-            if (historyManager != null) {
-                historyManager.save(config.getPortName(), config.getBaudRate(),
-                        config.getDataBits(), config.getStopBits(),
-                        config.getParity().name(), config.getFlowControl().name());
-            }
+            if (historyManager != null) historyManager.save(config);
             if (onPortStateChange != null) {
                 onPortStateChange.accept(true, config);
             }

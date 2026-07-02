@@ -39,12 +39,13 @@ public class PortHistoryManager {
     }
 
     /**
-     * Save a successful connection to history.
+     * Save a successful connection to history from a SerialConfig.
      */
-    public void save(String portName, int baudRate, int dataBits, int stopBits,
-                     String parity, String flowControl) {
+    public void save(SerialConfig config) {
         store.save(new PortHistory(
-                portName, baudRate, dataBits, stopBits, parity, flowControl,
+                config.getPortName(), config.getBaudRate(),
+                config.getDataBits(), config.getStopBits(),
+                config.getParity().name(), config.getFlowControl().name(),
                 System.currentTimeMillis()));
     }
 

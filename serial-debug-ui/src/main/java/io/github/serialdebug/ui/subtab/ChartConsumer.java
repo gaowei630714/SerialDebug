@@ -23,20 +23,17 @@ public class ChartConsumer implements PayloadConsumer {
     @Override
     public void onPacket(RawPacket pkt) {
         if (pkt.dir() == Direction.TX) return;
-        // Try text extraction first (regex on decoded ASCII text)
         String text = new String(pkt.data(), pkt.offset(), pkt.length());
         var values = extractor.extract(text);
         if (!values.isEmpty()) {
-            for (var v : values) textExtracted(v);
+            for (var v : values) addToBuffer(v);
             return;
         }
-        // Fallback: binary offset extraction (for HEX/binary protocol data)
-        // Uses offset rules registered via extractor.addOffsetRule()
         values = extractor.extract(pkt.data());
-        for (var v : values) textExtracted(v);
+        for (var v : values) addToBuffer(v);
     }
 
-    private void textExtracted(DataExtractor.ExtractedValue v) {
+    private void addToBuffer(DataExtractor.ExtractedValue v) {
         dataBuffer.addPoint(v.seriesName(), v.value());
     }
 }
