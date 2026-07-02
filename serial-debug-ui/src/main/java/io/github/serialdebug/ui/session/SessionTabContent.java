@@ -213,6 +213,11 @@ public class SessionTabContent extends BorderPane {
         HBox sendRow1 = new HBox(8, hexSendToggle, sendText, lineEndingCombo, sendBtn);
         sendRow1.setAlignment(Pos.CENTER_LEFT);
 
+        // Send button wired after sendController is created (below)
+        Runnable wireSendBtn = () -> sendBtn.setOnAction(e -> {
+            if (sendController != null) sendController.onSend();
+        });
+
         TextField intervalField = new TextField("1000");
         intervalField.setPrefWidth(70);
         TextField countField = new TextField("0");
@@ -255,6 +260,9 @@ public class SessionTabContent extends BorderPane {
                 serialService, new HexParser(), new AsciiParser(), new FileLogService(),
                 txRateCalc, new JsonPresetService());
         sendController.initialize();
+
+        // Wire send button now that controller exists
+        wireSendBtn.run();
 
         return view;
     }

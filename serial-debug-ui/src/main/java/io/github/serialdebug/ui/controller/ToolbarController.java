@@ -100,8 +100,8 @@ public class ToolbarController {
             UiHelper.showWarning("Please select a serial port");
             return;
         }
-        Integer baudRate = baudRateCombo.getValue();
-        if (baudRate == null) { UiHelper.showWarning("Please select baud rate"); return; }
+        Integer baudRate = parseComboInt(baudRateCombo, "baud rate");
+        if (baudRate == null) return;
         Integer dataBits = dataBitsCombo.getValue();
         if (dataBits == null) { UiHelper.showWarning("Please select data bits"); return; }
         Integer stopBits = stopBitsCombo.getValue();
@@ -141,6 +141,28 @@ public class ToolbarController {
                 onPortStateChange.accept(false, null);
             }
         }
+    }
+
+    /**
+     * Safely parse a ComboBox<Integer> value that may be a String (user typed)
+     * or Integer (user selected from dropdown).
+     */
+    private Integer parseComboInt(ComboBox<Integer> combo, String fieldName) {
+        Object val = combo.getValue();
+        if (val == null) {
+            UiHelper.showWarning("Please select " + fieldName);
+            return null;
+        }
+        if (val instanceof Integer i) return i;
+        if (val instanceof String s) {
+            try { return Integer.parseInt(s.trim()); }
+            catch (NumberFormatException e) {
+                UiHelper.showWarning("Invalid " + fieldName + ": " + s);
+                return null;
+            }
+        }
+        UiHelper.showWarning("Invalid " + fieldName);
+        return null;
     }
 
     private void updatePortState(boolean connected) {
