@@ -6,11 +6,15 @@ import io.github.serialdebug.core.parser.HexParser;
 import io.github.serialdebug.core.parser.AsciiParser;
 import io.github.serialdebug.core.chart.ChartDataBuffer;
 import io.github.serialdebug.core.chart.DataExtractor;
+import io.github.serialdebug.core.chart.PayloadConsumer;
+import io.github.serialdebug.core.chart.SessionDataPipeline.RawPacket;
 import io.github.serialdebug.core.serial.SerialService;
 import io.github.serialdebug.core.util.RateCalculator;
 import io.github.serialdebug.ui.controller.*;
 import io.github.serialdebug.ui.subtab.*;
+import io.github.serialdebug.ui.crc.CrcPanel;
 import io.github.serialdebug.ui.chart.WaveChartCanvas;
+import io.github.serialdebug.ui.config.PortHistoryManager;
 import io.github.serialdebug.ui.preset.JsonPresetService;
 import javafx.animation.AnimationTimer;
 import javafx.geometry.Insets;
@@ -72,6 +76,10 @@ public class SessionTabContent extends BorderPane {
         SubTabPane subTabs = new SubTabPane(session.getPipeline());
         VBox.setVgrow(subTabs, Priority.ALWAYS);
 
+        // Port history manager (auto-fill + save)
+        PortHistoryManager historyManager = new PortHistoryManager();
+        toolbarController.setHistoryManager(historyManager);
+
         Tab ioTab = new Tab("收发视图", createIOView());
         subTabs.addAlwaysActiveTab("io", ioTab, new TextConsumer(hexArea, asciiArea, true));
 
@@ -79,6 +87,23 @@ public class SessionTabContent extends BorderPane {
         subTabs.addLazyTab("chart", chartTab,
                 new ChartConsumer(waveBuffer, waveExtractor),
                 this::startWaveform, this::stopWaveform);
+
+        // CRC calculator tab (lazy, no consumer needed)
+        CrcPanel crcPanel = new CrcPanel(hexResult -> {
+            if (sendController != null && hexResult != null) {
+                sendController.appendToSendField(hexResult);
+            }
+        });
+        Tab crcTab = new Tab("CRC 助手", crcPanel);
+        subTabs.addLazyTab("crc", crcTab, new PayloadConsumer() {
+            @Override public void onPacket(RawPacket packet) { /* CRC is manual, no auto-consumption */ }
+        }, null, null);
+
+        // Connection history tab
+        Tab historyTab = new Tab("连接历史", createHistoryView(historyManager));
+        subTabs.addLazyTab("history", historyTab, new PayloadConsumer() {
+            @Override public void onPacket(RawPacket packet) { /* History is static */ }
+        }, null, null);
 
         Tab atTab = new Tab("AT伴侣", createPlaceholder("AT 指令伴侣 — M3"));
         subTabs.addLazyTab("at", atTab, new AtConsumer(), null, null);
@@ -310,6 +335,31 @@ public class SessionTabContent extends BorderPane {
         label.setStyle("-fx-font-size: 16px; -fx-text-fill: #999;");
         box.getChildren().add(label);
         return box;
+    }
+
+    private VBox createHistoryView(PortHistoryManager historyManager) {
+        VBox view = new VBox(8);
+        view.setPadding(new Insets(12));
+
+        Label title = new Label("最近连接的设备");
+        title.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
+
+        ListView<String> historyList = new ListView<>();
+        historyList.setPrefHeight(300);
+
+        // Load history
+        var history = historyManager.getStore().getRecent(20);
+        for (var h : history) {
+            historyList.getItems().add(String.format("%s @ %d %d-%s-%d",
+                    h.portName(), h.baudRate(), h.dataBits(), h.parity().charAt(0), h.stopBits()));
+        }
+
+        if (history.isEmpty()) {
+            historyList.getItems().add("暂无连接历史");
+        }
+
+        view.getChildren().addAll(title, historyList);
+        return view;
     }
 
     private HBox createStatusBar() {

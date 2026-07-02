@@ -132,6 +132,17 @@ public class SendController {
         if (timerExecutor != null) timerExecutor.shutdownNow();
     }
 
+    /** Append HEX result from CRC panel to the send text field */
+    public void appendToSendField(String hexResult) {
+        if (hexResult == null || hexResult.isBlank()) return;
+        String current = sendTextField.getText();
+        if (current == null || current.isBlank()) {
+            sendTextField.setText(hexResult);
+        } else {
+            sendTextField.setText(current + " " + hexResult);
+        }
+    }
+
     // ── Send ──────────────────────────────────────────────────────────────
 
     public void onSend() {

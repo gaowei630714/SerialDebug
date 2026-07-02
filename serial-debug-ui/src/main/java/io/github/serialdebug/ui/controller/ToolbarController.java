@@ -3,6 +3,7 @@ package io.github.serialdebug.ui.controller;
 import io.github.serialdebug.core.serial.SerialConfig;
 import io.github.serialdebug.core.serial.SerialPortInfo;
 import io.github.serialdebug.core.serial.SerialService;
+import io.github.serialdebug.ui.config.PortHistoryManager;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -29,6 +30,7 @@ public class ToolbarController {
     private final AtomicBoolean isOpen = new AtomicBoolean(false);
 
     private BiConsumer<Boolean, SerialConfig> onPortStateChange;
+    private PortHistoryManager historyManager;
 
     public ToolbarController(
             ComboBox<SerialPortInfo> portCombo,
@@ -51,6 +53,19 @@ public class ToolbarController {
         this.statusLabel = statusLabel;
         this.connectionStatusLabel = connectionStatusLabel;
         this.serialService = serialService;
+    }
+
+    public void setHistoryManager(PortHistoryManager historyManager) {
+        this.historyManager = historyManager;
+        // Listen for port selection changes to auto-fill params
+        if (historyManager != null && portCombo != null) {
+            portCombo.getSelectionModel().selectedItemProperty().addListener((obs, old, port) -> {
+                if (port != null) {
+                    historyManager.autoFill(port.getSystemPortName(),
+                            baudRateCombo, dataBitsCombo, stopBitsCombo, parityCombo);
+                }
+            });
+        }
     }
 
     public void setOnPortStateChange(BiConsumer<Boolean, SerialConfig> callback) {
@@ -121,6 +136,12 @@ public class ToolbarController {
             isOpen.set(true);
             updatePortState(true);
             statusLabel.setText("Connected: " + config);
+            // Save to history for next time
+            if (historyManager != null) {
+                historyManager.save(config.getPortName(), config.getBaudRate(),
+                        config.getDataBits(), config.getStopBits(),
+                        config.getParity().name(), config.getFlowControl().name());
+            }
             if (onPortStateChange != null) {
                 onPortStateChange.accept(true, config);
             }
