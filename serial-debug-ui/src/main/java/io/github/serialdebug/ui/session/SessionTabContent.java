@@ -2,13 +2,19 @@ package io.github.serialdebug.ui.session;
 
 import io.github.serialdebug.core.log.FileLogService;
 import io.github.serialdebug.core.log.LogService;
-import io.github.serialdebug.core.serial.SerialService;
 import io.github.serialdebug.core.parser.HexParser;
 import io.github.serialdebug.core.parser.AsciiParser;
+import io.github.serialdebug.core.chart.ChartDataBuffer;
+import io.github.serialdebug.core.chart.DataExtractor;
+import io.github.serialdebug.core.serial.SerialService;
 import io.github.serialdebug.core.util.RateCalculator;
 import io.github.serialdebug.ui.controller.*;
+import io.github.serialdebug.ui.subtab.*;
+import io.github.serialdebug.ui.chart.WaveChartCanvas;
 import io.github.serialdebug.ui.preset.JsonPresetService;
+import javafx.animation.AnimationTimer;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
@@ -16,7 +22,7 @@ import org.kordamp.ikonli.javafx.FontIcon;
 
 /**
  * Builds the complete UI content for one serial session within a tab.
- * Owns per-session controllers: toolbar, send, file-send, display, log, status-bar.
+ * Uses SubTabPane for module isolation and SessionDataPipeline for data flow.
  */
 public class SessionTabContent extends BorderPane {
 
@@ -33,16 +39,23 @@ public class SessionTabContent extends BorderPane {
     private final RateCalculator rxRateCalc = new RateCalculator();
     private final RateCalculator txRateCalc = new RateCalculator();
 
-    // File send controls (created per-session inside send area)
     private final Button fileSendBtn = new Button("Send File", new FontIcon("mdi2f-file"));
     private final Label fileSendProgress = new Label("");
     private final Button cancelFileSendBtn = new Button("Cancel");
 
+    private final ChartDataBuffer waveBuffer = new ChartDataBuffer();
+    private final DataExtractor waveExtractor = new DataExtractor();
+    private final WaveChartCanvas waveCanvas = new WaveChartCanvas(waveBuffer, 800, 300);
+    private AnimationTimer waveTimer;
+    private TextArea hexArea;
+    private TextArea asciiArea;
+    private TextArea getHexArea() { return hexArea; }
+    private TextArea getAsciiArea() { return asciiArea; }
+
     public SessionTabContent(SerialSession session,
                              ToggleButton logHexToggle, ToggleButton logAsciiToggle,
                              Button startLoggingButton, Button stopLoggingButton,
-                             Label loggingStatusLabel,
-                             Stage stage) {
+                             Label loggingStatusLabel, Stage stage) {
         this.session = session;
         this.serialService = session.getSerialService();
         buildUI(logHexToggle, logAsciiToggle, startLoggingButton, stopLoggingButton, loggingStatusLabel, stage);
@@ -50,39 +63,39 @@ public class SessionTabContent extends BorderPane {
 
     private void buildUI(ToggleButton logHexToggle, ToggleButton logAsciiToggle,
                          Button startLoggingButton, Button stopLoggingButton,
-                         Label loggingStatusLabel,
-                         Stage stage) {
+                         Label loggingStatusLabel, Stage stage) {
         VBox root = new VBox(0);
 
         ToolBar portBar = createPortBar();
         root.getChildren().add(portBar);
 
-        SplitPane splitPane = new SplitPane();
-        splitPane.setDividerPositions(0.25);
+        SubTabPane subTabs = new SubTabPane(session.getPipeline());
+        VBox.setVgrow(subTabs, Priority.ALWAYS);
 
-        VBox leftPanel = createStatsPanel();
-        splitPane.getItems().add(leftPanel);
+        Tab ioTab = new Tab("收发视图", createIOView());
+        subTabs.addAlwaysActiveTab("io", ioTab, new TextConsumer(hexArea, asciiArea, true));
 
-        VBox rightPanel = createDisplayArea();
-        splitPane.getItems().add(rightPanel);
+        Tab chartTab = new Tab("波形图", createChartView());
+        subTabs.addLazyTab("chart", chartTab,
+                new ChartConsumer(waveBuffer, waveExtractor),
+                this::startWaveform, this::stopWaveform);
 
-        VBox.setVgrow(splitPane, Priority.ALWAYS);
-        root.getChildren().add(splitPane);
+        Tab atTab = new Tab("AT伴侣", createPlaceholder("AT 指令伴侣 — M3"));
+        subTabs.addLazyTab("at", atTab, new AtConsumer(), null, null);
 
-        HBox statusBar = createStatusBar();
-        root.getChildren().add(statusBar);
+        Tab dashTab = new Tab("仪表盘", createPlaceholder("数据仪表盘 — M3"));
+        subTabs.addLazyTab("dash", dashTab, new DashboardConsumer(), null, null);
+
+        root.getChildren().add(subTabs);
+        root.getChildren().add(createStatusBar());
 
         setCenter(root);
 
-        // ── Display + Send controllers (created in createDisplayArea) ──
-
-        // ── File send controller ──
         cancelFileSendBtn.setDisable(true);
         cancelFileSendBtn.setVisible(false);
         fileSendController = new FileSendController(
                 fileSendBtn, fileSendProgress, cancelFileSendBtn,
                 sendController, displayController::updateStats);
-        // File send: always enabled; checks port status on click
         fileSendBtn.setOnAction(e -> {
             if (fileSendController == null) return;
             if (!toolbarController.isOpen()) {
@@ -95,13 +108,11 @@ public class SessionTabContent extends BorderPane {
             if (fileSendController != null) fileSendController.onCancelFileSend();
         });
 
-        // ── LogController (synchronous — Stage passed from MainController) ──
         logController = new LogController(
                 startLoggingButton, stopLoggingButton, logHexToggle, logAsciiToggle,
                 loggingStatusLabel, stage, logService, displayController::updateStats);
         logController.initialize();
 
-        // ── Wire port state change ──
         toolbarController.setOnPortStateChange((connected, config) -> {
             boolean isConnected = connected != null && connected;
             sendController.setPortOpen(isConnected);
@@ -125,7 +136,6 @@ public class SessionTabContent extends BorderPane {
         ComboBox<Integer> baudCombo = new ComboBox<>();
         baudCombo.setPrefWidth(100);
         baudCombo.setEditable(true);
-
         ComboBox<Integer> dataBitsCombo = new ComboBox<>();
         dataBitsCombo.setPrefWidth(60);
         ComboBox<Integer> stopBitsCombo = new ComboBox<>();
@@ -134,11 +144,9 @@ public class SessionTabContent extends BorderPane {
         parityCombo.setPrefWidth(90);
 
         Button openCloseBtn = new Button("Open", new FontIcon("mdi2p-power-plug"));
-        Button refreshBtn = new Button(null, new FontIcon("mdi2r-refresh"));
-
-        // Open / Close button
         openCloseBtn.setOnAction(e -> toolbarController.onOpenClose());
-        // Refresh port list
+
+        Button refreshBtn = new Button(null, new FontIcon("mdi2r-refresh"));
         refreshBtn.setOnAction(e -> toolbarController.refreshPortList());
 
         Label statusLabel = new Label("Disconnected");
@@ -158,51 +166,21 @@ public class SessionTabContent extends BorderPane {
         return portBar;
     }
 
-    private VBox createStatsPanel() {
-        VBox panel = new VBox(8);
-        panel.setPadding(new Insets(8));
-        panel.setMinWidth(140);
+    private VBox createIOView() {
+        VBox view = new VBox(0);
 
-        Label statusTitle = new Label("Port Status");
-        statusTitle.getStyleClass().add("section-title");
-        Label statusLabel = new Label("Disconnected");
-        statusLabel.setWrapText(true);
-        Separator sep1 = new Separator();
-        Label statsTitle = new Label("Statistics");
-        statsTitle.getStyleClass().add("section-title");
-        Label rxCountLabel = new Label("RX: 0 bytes");
-        Label txCountLabel = new Label("TX: 0 bytes");
-        Label rxRateLabel = new Label("RX rate: 0 B/s");
-        Label txRateLabel = new Label("TX rate: 0 B/s");
-
-        panel.getChildren().addAll(statusTitle, statusLabel, sep1,
-                statsTitle, rxCountLabel, txCountLabel, rxRateLabel, txRateLabel);
-
-        statusBarController = new StatusBarController(
-                null, rxRateLabel, txRateLabel, null, rxRateCalc, txRateCalc);
-        statusBarController.initialize();
-
-        return panel;
-    }
-
-    private VBox createDisplayArea() {
-        VBox right = new VBox(0);
-
-        // ── Display tabs ──
         TabPane displayTabs = new TabPane();
         displayTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         VBox.setVgrow(displayTabs, Priority.ALWAYS);
 
-        TextArea hexArea = new TextArea();
+        hexArea = new TextArea();
         hexArea.setEditable(false);
         hexArea.getStyleClass().add("mono-text-area");
-        TextArea asciiArea = new TextArea();
+        asciiArea = new TextArea();
         asciiArea.setEditable(false);
         asciiArea.getStyleClass().add("mono-text-area");
-
         displayTabs.getTabs().addAll(new Tab("HEX", hexArea), new Tab("ASCII", asciiArea));
 
-        // ── Search bar ──
         TextField searchField = new TextField();
         searchField.setPrefWidth(150);
         searchField.setPromptText("Search...");
@@ -211,19 +189,12 @@ public class SessionTabContent extends BorderPane {
         Button clearBtn = new Button("Clear", new FontIcon("mdi2c-close"));
         Button pauseBtn = new Button("Pause", new FontIcon("mdi2p-pause"));
 
-        // Clear button: clears display (wired after controller creation below)
-        clearBtn.setOnAction(e -> {
-            if (displayController != null) displayController.onClear();
-        });
-        // Pause button: toggles auto-scroll via DisplayController
-        pauseBtn.setOnAction(e -> {
-            if (displayController != null) displayController.onPauseScroll();
-        });
+        clearBtn.setOnAction(e -> displayController.onClear());
+        pauseBtn.setOnAction(e -> displayController.onPauseScroll());
 
         ToolBar searchBar = new ToolBar(clearBtn, pauseBtn, new Separator(),
                 searchField, filterToggle, caseToggle);
 
-        // ── Send area ──
         VBox sendArea = new VBox(4);
         sendArea.getStyleClass().add("send-area");
         sendArea.setPadding(new Insets(8, 8, 8, 8));
@@ -240,14 +211,13 @@ public class SessionTabContent extends BorderPane {
         sendBtn.setDefaultButton(true);
 
         HBox sendRow1 = new HBox(8, hexSendToggle, sendText, lineEndingCombo, sendBtn);
-        sendRow1.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        sendRow1.setAlignment(Pos.CENTER_LEFT);
 
         TextField intervalField = new TextField("1000");
         intervalField.setPrefWidth(70);
         TextField countField = new TextField("0");
         countField.setPrefWidth(50);
         Button timerBtn = new Button("Timed", new FontIcon("mdi2t-timer"));
-        // Timed send: wires after sendController is created
         timerBtn.setOnAction(e -> {
             if (sendController != null) sendController.onTimedSend();
         });
@@ -255,18 +225,16 @@ public class SessionTabContent extends BorderPane {
         HBox sendRow2 = new HBox(8,
                 new Label("Interval (ms):"), intervalField,
                 new Label("Count:"), countField, timerBtn);
-        sendRow2.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        sendRow2.setAlignment(Pos.CENTER_LEFT);
 
-        // ── File send row (per-session) ──
         fileSendProgress.getStyleClass().add("file-send-progress");
         HBox sendRow3 = new HBox(8, fileSendBtn, fileSendProgress, cancelFileSendBtn);
-        sendRow3.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        sendRow3.setAlignment(Pos.CENTER_LEFT);
 
         sendArea.getChildren().addAll(sendRow1, sendRow2, sendRow3);
 
-        right.getChildren().addAll(displayTabs, searchBar, new Separator(), sendArea);
+        view.getChildren().addAll(displayTabs, searchBar, new Separator(), sendArea);
 
-        // ── Controllers ──
         displayController = new DisplayController(
                 hexArea, asciiArea, pauseBtn,
                 searchField, filterToggle, caseToggle,
@@ -288,17 +256,91 @@ public class SessionTabContent extends BorderPane {
                 txRateCalc, new JsonPresetService());
         sendController.initialize();
 
-        return right;
+        return view;
+    }
+
+    private VBox createChartView() {
+        VBox view = new VBox(4);
+        view.setPadding(new Insets(4));
+
+        TextField ruleField = new TextField();
+        ruleField.setPromptText("例: T=([\\d.]+)|H=([\\d.]+)");
+        HBox.setHgrow(ruleField, Priority.ALWAYS);
+        Button applyBtn = new Button("应用");
+        applyBtn.setOnAction(e -> {
+            waveExtractor.clearRules();
+            String text = ruleField.getText();
+            if (text != null && !text.isBlank()) {
+                for (String rule : text.split("\\|")) {
+                    String[] parts = rule.split("=", 2);
+                    if (parts.length == 2) {
+                        waveExtractor.addRegexRule(parts[0].trim(), parts[1].trim(), 1);
+                    }
+                }
+            }
+        });
+        Button clearBtn = new Button("清空");
+        clearBtn.setOnAction(e -> waveBuffer.clear());
+        CheckBox autoScrollCheck = new CheckBox("自动滚动");
+        autoScrollCheck.setSelected(true);
+
+        ToolBar chartBar = new ToolBar(new Label("规则:"), ruleField, applyBtn, clearBtn, autoScrollCheck);
+
+        StackPane canvasPane = new StackPane(waveCanvas);
+        waveCanvas.widthProperty().bind(canvasPane.widthProperty());
+        waveCanvas.heightProperty().bind(canvasPane.heightProperty());
+        VBox.setVgrow(canvasPane, Priority.ALWAYS);
+
+        view.getChildren().addAll(chartBar, canvasPane);
+        return view;
+    }
+
+    private VBox createPlaceholder(String text) {
+        VBox box = new VBox();
+        box.setAlignment(Pos.CENTER);
+        Label label = new Label(text);
+        label.setStyle("-fx-font-size: 16px; -fx-text-fill: #999;");
+        box.getChildren().add(label);
+        return box;
     }
 
     private HBox createStatusBar() {
         HBox statusBar = new HBox(16);
         statusBar.getStyleClass().add("status-bar");
         statusBar.setPadding(new Insets(4, 8, 4, 8));
-        statusBar.getChildren().addAll(
-                new Label("Disconnected"),
-                new Pane(), new Label("RX: 0"), new Label("TX: 0"));
+
+        Label connLabel = new Label("Disconnected");
+        Pane spacer = new Pane();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        Label rxRateLabel = new Label("RX rate: 0 B/s");
+        Label txRateLabel = new Label("TX rate: 0 B/s");
+
+        statusBar.getChildren().addAll(connLabel, spacer, rxRateLabel, txRateLabel);
+
+        statusBarController = new StatusBarController(
+                connLabel, rxRateLabel, txRateLabel, null, rxRateCalc, txRateCalc);
+        statusBarController.initialize();
+
         return statusBar;
+    }
+
+    private void startWaveform() {
+        if (waveTimer != null) return;
+        waveTimer = new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                session.getPipeline().dispatch();
+                waveCanvas.redraw();
+            }
+        };
+        waveTimer.start();
+    }
+
+    private void stopWaveform() {
+        if (waveTimer != null) {
+            waveTimer.stop();
+            waveTimer = null;
+        }
     }
 
     public void onStartLogging() {
@@ -310,9 +352,12 @@ public class SessionTabContent extends BorderPane {
     }
 
     public void shutdown() {
+        stopWaveform();
         if (toolbarController != null && toolbarController.isOpen()) toolbarController.closePort();
         if (sendController != null) sendController.shutdown();
         if (fileSendController != null) fileSendController.shutdown();
         if (statusBarController != null) statusBarController.shutdown();
     }
+
+    public SerialSession getSession() { return session; }
 }

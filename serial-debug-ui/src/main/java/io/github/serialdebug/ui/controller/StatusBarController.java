@@ -79,8 +79,8 @@ public class StatusBarController {
     public void updateRateLabels() {
         double rxRate = rxRateCalc.getRate();
         double txRate = txRateCalc.getRate();
-        rxRateLabel.setText(String.format("RX rate: %.1f B/s", rxRate));
-        txRateLabel.setText(String.format("TX rate: %.1f B/s", txRate));
+        if (rxRateLabel != null) rxRateLabel.setText(String.format("RX rate: %.1f B/s", rxRate));
+        if (txRateLabel != null) txRateLabel.setText(String.format("TX rate: %.1f B/s", txRate));
     }
 
     public void resetRateLabels() {

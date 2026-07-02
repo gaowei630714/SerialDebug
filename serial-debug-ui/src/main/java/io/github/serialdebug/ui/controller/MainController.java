@@ -20,7 +20,6 @@ public class MainController implements Initializable {
     @FXML private TabPane mainTabPane;
     @FXML private Tab addTab;
 
-    // Global logging toolbar — affects active session
     @FXML private Button startLoggingButton;
     @FXML private Button stopLoggingButton;
     @FXML private ToggleButton logHexToggle;
@@ -38,7 +37,6 @@ public class MainController implements Initializable {
             if (addTab.isSelected()) addNewSession();
         });
 
-        // Tab selection → update active session for logging toolbar
         mainTabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
             if (newTab != null && newTab != addTab) {
                 for (SerialSession s : sessionManager.getSessions()) {
