@@ -1,7 +1,6 @@
 package io.github.serialdebug.ui.crc;
 
 import io.github.serialdebug.core.crc.CrcEngine;
-import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -10,21 +9,26 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
 import org.kordamp.ikonli.javafx.FontIcon;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.ToLongFunction;
 
 /**
  * CRC calculator panel. HEX input → real-time results for 5 algorithms.
- * Supports appending result to send area and copying to clipboard.
+ * Supports appending CRC bytes (as space-separated HEX) to send area
+ * and copying formatted result to clipboard.
  */
 public class CrcPanel extends VBox {
 
     private static record AlgRow(String name, Label resultLabel,
-                                  java.util.function.Function<byte[], String> formatter) {
+                                  ToLongFunction<byte[]> crcFn, int byteCount) {
     }
 
     private final TextField hexField;
     private final Consumer<String> onAppend;
-    private final java.util.List<AlgRow> rows = new java.util.ArrayList<>();
+    private final List<AlgRow> rows = new ArrayList<>();
+    private byte[] lastParsed = new byte[0];
 
     public CrcPanel(Consumer<String> onAppend) {
         this.onAppend = onAppend;
@@ -32,7 +36,6 @@ public class CrcPanel extends VBox {
         setPadding(new Insets(12));
         getStyleClass().add("crc-panel");
 
-        // HEX input row
         Label hexLabel = new Label("HEX 输入:");
         hexField = new TextField();
         hexField.setPromptText("例: 01 03 00 00 00 01");
@@ -40,20 +43,17 @@ public class CrcPanel extends VBox {
         HBox inputRow = new HBox(8, hexLabel, hexField);
         inputRow.setAlignment(Pos.CENTER_LEFT);
 
-        // Real-time listener
-        hexField.textProperty().addListener((obs, old, val) -> updateAll(val));
+        hexField.textProperty().addListener((obs, old, val) -> {
+            lastParsed = parseHex(val);
+            updateAll(lastParsed);
+        });
 
-        // Algorithm rows
-        rows.add(new AlgRow("CRC-8/Dallas", new Label("—"),
-                d -> String.format("0x%02X", CrcEngine.crc8Dallas(d))));
-        rows.add(new AlgRow("CRC-16/Modbus", new Label("—"),
-                d -> String.format("0x%04X", CrcEngine.crc16Modbus(d))));
-        rows.add(new AlgRow("CRC-32", new Label("—"),
-                d -> String.format("0x%08X", CrcEngine.crc32(d))));
-        rows.add(new AlgRow("SUM-8", new Label("—"),
-                d -> String.format("0x%02X", CrcEngine.sum8(d))));
-        rows.add(new AlgRow("SUM-16", new Label("—"),
-                d -> String.format("0x%04X", CrcEngine.sum16(d))));
+        // Algorithm rows: display format is "0xVV" but append sends raw bytes
+        rows.add(new AlgRow("CRC-8/Dallas", new Label("—"), CrcEngine::crc8Dallas, 1));
+        rows.add(new AlgRow("CRC-16/Modbus", new Label("—"), CrcEngine::crc16Modbus, 2));
+        rows.add(new AlgRow("CRC-32", new Label("—"), d -> (int)(CrcEngine.crc32(d) & 0xFFFFFFFFL), 4));
+        rows.add(new AlgRow("SUM-8", new Label("—"), CrcEngine::sum8, 1));
+        rows.add(new AlgRow("SUM-16", new Label("—"), CrcEngine::sum16, 2));
 
         getChildren().add(inputRow);
         for (AlgRow row : rows) {
@@ -62,11 +62,12 @@ public class CrcPanel extends VBox {
             Label nameLabel = new Label(row.name() + ":");
             nameLabel.setPrefWidth(120);
             row.resultLabel().setStyle("-fx-font-family: Consolas, monospace; -fx-font-weight: bold;");
+            updateLabel(row, new byte[0]);
+
             Button appendBtn = new Button("追加", new FontIcon("mdi2p-plus"));
             appendBtn.setOnAction(e -> {
-                String hex = hexField.getText();
-                if (hex != null && !hex.isBlank() && onAppend != null) {
-                    onAppend.accept(row.formatter().apply(parseHex(hex)));
+                if (onAppend != null && lastParsed.length > 0) {
+                    onAppend.accept(crcToHex(row, lastParsed));
                 }
             });
             Button copyBtn = new Button(null, new FontIcon("mdi2c-content-copy"));
@@ -82,22 +83,35 @@ public class CrcPanel extends VBox {
         }
     }
 
-    private void updateAll(String hexText) {
-        if (hexText == null || hexText.isBlank()) {
-            for (AlgRow r : rows) r.resultLabel().setText("—");
+    private void updateAll(byte[] data) {
+        for (AlgRow r : rows) updateLabel(r, data);
+    }
+
+    private void updateLabel(AlgRow r, byte[] data) {
+        if (data.length == 0) {
+            r.resultLabel().setText("—");
             return;
         }
-        byte[] data = parseHex(hexText);
-        for (AlgRow r : rows) {
-            try {
-                r.resultLabel().setText(r.formatter().apply(data));
-            } catch (Exception e) {
-                r.resultLabel().setText("ERR");
-            }
+        long val = r.crcFn().applyAsLong(data);
+        if (r.byteCount() <= 2) {
+            r.resultLabel().setText(String.format("0x%0" + (r.byteCount() * 2) + "X", val));
+        } else {
+            r.resultLabel().setText(String.format("0x%08X", val));
         }
     }
 
+    /** Convert CRC value to space-separated HEX string for appending */
+    private String crcToHex(AlgRow r, byte[] data) {
+        long val = r.crcFn().applyAsLong(data);
+        StringBuilder sb = new StringBuilder();
+        for (int i = r.byteCount() - 1; i >= 0; i--) {
+            sb.append(String.format("%02X ", (val >> (i * 8)) & 0xFF));
+        }
+        return sb.toString().trim();
+    }
+
     private byte[] parseHex(String text) {
+        if (text == null || text.isBlank()) return new byte[0];
         String cleaned = text.replaceAll("[^0-9a-fA-F]", "");
         int len = cleaned.length();
         if (len % 2 != 0) len--;
