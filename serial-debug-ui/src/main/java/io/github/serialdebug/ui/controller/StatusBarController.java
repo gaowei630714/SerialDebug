@@ -68,6 +68,7 @@ public class StatusBarController {
     }
 
     public void updateConnectionStatus(boolean connected, SerialConfig config) {
+        if (connectionStatusLabel == null) return;
         if (connected && config != null) {
             connectionStatusLabel.setText("Connected: " + config);
         } else {
