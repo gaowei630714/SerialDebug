@@ -5,6 +5,7 @@ import io.github.serialdebug.core.chart.DataExtractor.ExtractedValue;
 import io.github.serialdebug.core.chart.PayloadConsumer;
 import io.github.serialdebug.core.chart.SessionDataPipeline.RawPacket;
 import io.github.serialdebug.core.log.Direction;
+import javafx.application.Platform;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -30,7 +31,8 @@ public class DashboardConsumer implements PayloadConsumer {
         String text = new String(pkt.data(), pkt.offset(), pkt.length());
         List<ExtractedValue> values = extractor.extract(text);
         if (!values.isEmpty()) {
-            onExtracted.accept(values);
+            List<ExtractedValue> copy = List.copyOf(values);
+            Platform.runLater(() -> onExtracted.accept(copy));
         }
     }
 }
