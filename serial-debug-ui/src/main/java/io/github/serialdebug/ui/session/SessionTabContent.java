@@ -13,6 +13,9 @@ import io.github.serialdebug.core.util.RateCalculator;
 import io.github.serialdebug.ui.controller.*;
 import io.github.serialdebug.ui.subtab.*;
 import io.github.serialdebug.ui.crc.CrcPanel;
+import io.github.serialdebug.ui.at.AtCompanionPanel;
+import io.github.serialdebug.ui.dashboard.DashboardPanel;
+import io.github.serialdebug.ui.dashboard.DashboardConsumer;
 import io.github.serialdebug.ui.chart.WaveChartCanvas;
 import io.github.serialdebug.ui.config.PortHistoryManager;
 import io.github.serialdebug.ui.preset.JsonPresetService;
@@ -53,6 +56,7 @@ public class SessionTabContent extends BorderPane {
     private final DataExtractor waveExtractor = new DataExtractor();
     private final WaveChartCanvas waveCanvas = new WaveChartCanvas(waveBuffer, 800, 300);
     private AnimationTimer waveTimer;
+    private SubTabPane subTabs;
     private TextArea hexArea;
     private TextArea asciiArea;
     private TextArea getHexArea() { return hexArea; }
@@ -75,7 +79,7 @@ public class SessionTabContent extends BorderPane {
         ToolBar portBar = createPortBar();
         root.getChildren().add(portBar);
 
-        SubTabPane subTabs = new SubTabPane(session.getPipeline());
+        subTabs = new SubTabPane(session.getPipeline());
         VBox.setVgrow(subTabs, Priority.ALWAYS);
 
         // Port history manager (auto-fill + save)
@@ -107,11 +111,12 @@ public class SessionTabContent extends BorderPane {
             @Override public void onPacket(RawPacket packet) { /* History is static */ }
         }, null, null);
 
-        Tab atTab = new Tab("AT伴侣", createPlaceholder("AT 指令伴侣 — M3"));
-        subTabs.addLazyTab("at", atTab, new AtConsumer(), null, null);
-
-        Tab dashTab = new Tab("仪表盘", createPlaceholder("数据仪表盘 — M3"));
-        subTabs.addLazyTab("dash", dashTab, new DashboardConsumer(), null, null);
+        // Dashboard tab (lazy, registers DashboardConsumer)
+        DashboardPanel dashboardPanel = new DashboardPanel(waveExtractor);
+        Tab dashTab = new Tab("仪表盘", dashboardPanel);
+        subTabs.addLazyTab("dash", dashTab,
+                new DashboardConsumer(waveExtractor, dashboardPanel::onExtracted),
+                null, null);
 
         root.getChildren().add(subTabs);
         root.getChildren().add(createStatusBar());
@@ -287,6 +292,14 @@ public class SessionTabContent extends BorderPane {
                 serialService, hexParser, asciiParser, logService,
                 txRateCalc, new JsonPresetService());
         sendController.initialize();
+
+        // AT companion tab (added after sendController is initialized)
+        AtCompanionPanel atPanel = new AtCompanionPanel(sendController::setSendText);
+        displayController.setOnResponseReceived(atPanel::appendResponse);
+        Tab atTab = new Tab("AT 伴侣", atPanel);
+        subTabs.addLazyTab("at", atTab, new PayloadConsumer() {
+            @Override public void onPacket(RawPacket pkt) { /* AT companion receives via DisplayController callback */ }
+        }, null, null);
 
         // Wire send button now that controller exists
         wireSendBtn.run();
