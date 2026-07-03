@@ -343,15 +343,6 @@ public class SessionTabContent extends BorderPane {
         return view;
     }
 
-    private VBox createPlaceholder(String text) {
-        VBox box = new VBox();
-        box.setAlignment(Pos.CENTER);
-        Label label = new Label(text);
-        label.setStyle("-fx-font-size: 16px; -fx-text-fill: #999;");
-        box.getChildren().add(label);
-        return box;
-    }
-
     private VBox createHistoryView(PortHistoryManager historyManager) {
         VBox view = new VBox(8);
         view.setPadding(new Insets(12));
