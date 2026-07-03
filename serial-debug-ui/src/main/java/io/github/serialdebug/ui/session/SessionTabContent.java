@@ -200,10 +200,8 @@ public class SessionTabContent extends BorderPane {
         Button refreshBtn = new Button(null, new FontIcon("mdi2r-refresh"));
         refreshBtn.setOnAction(e -> toolbarController.refreshPortList());
 
-        Label statusLabel = new Label();
-        statusLabel.textProperty().bind(Messages.createStringBinding("toolbar.disconnected"));
-        Label connectionLabel = new Label();
-        connectionLabel.textProperty().bind(Messages.createStringBinding("toolbar.disconnected"));
+        Label statusLabel = new Label(Messages.get("toolbar.disconnected"));
+        Label connectionLabel = new Label(Messages.get("toolbar.disconnected"));
 
         ToolBar portBar = new ToolBar(
                 new Label("Port:"), portCombo, new Separator(),
@@ -523,14 +521,11 @@ public class SessionTabContent extends BorderPane {
         statusBar.getStyleClass().add("status-bar");
         statusBar.setPadding(new Insets(4, 8, 4, 8));
 
-        Label connLabel = new Label();
-        connLabel.textProperty().bind(Messages.createStringBinding("status.disconnected"));
+        Label connLabel = new Label(Messages.get("status.disconnected"));
         Pane spacer = new Pane();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        Label rxRateLabel = new Label();
-        rxRateLabel.textProperty().bind(Messages.createStringBinding("status.rx.rate", 0));
-        Label txRateLabel = new Label();
-        txRateLabel.textProperty().bind(Messages.createStringBinding("status.tx.rate", 0));
+        Label rxRateLabel = new Label(Messages.get("status.rx.rate", 0));
+        Label txRateLabel = new Label(Messages.get("status.tx.rate", 0));
 
         statusBar.getChildren().addAll(connLabel, spacer, rxRateLabel, txRateLabel);
 
