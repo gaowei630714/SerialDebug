@@ -15,17 +15,20 @@ public class LocaleManager {
     private static final String KEY = "locale";
 
     private final ObjectProperty<Locale> currentLocale = new SimpleObjectProperty<>();
+    private volatile Locale volatileLocale;
 
     private LocaleManager() {
         Locale saved = loadSavedLocale();
-        currentLocale.set(saved != null ? saved : Locale.getDefault());
+        volatileLocale = saved != null ? saved : Locale.getDefault();
+        currentLocale.set(volatileLocale);
     }
 
     public static LocaleManager getInstance() { return INSTANCE; }
     public ObjectProperty<Locale> localeProperty() { return currentLocale; }
-    public Locale get() { return currentLocale.get(); }
+    public Locale get() { return volatileLocale; }
 
     public void set(Locale locale) {
+        volatileLocale = locale;
         currentLocale.set(locale);
         saveLocale(locale);
     }
