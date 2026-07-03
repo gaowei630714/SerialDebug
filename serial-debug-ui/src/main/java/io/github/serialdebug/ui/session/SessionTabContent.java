@@ -13,14 +13,20 @@ import io.github.serialdebug.core.util.RateCalculator;
 import io.github.serialdebug.ui.controller.*;
 import io.github.serialdebug.ui.subtab.*;
 import io.github.serialdebug.ui.crc.CrcPanel;
-import io.github.serialdebug.ui.at.AtCompanionPanel;
+import io.github.serialdebug.ui.at.AtCommand;
+import io.github.serialdebug.ui.at.AtCommandService;
 import io.github.serialdebug.ui.at.JsonAtCommandService;
 import io.github.serialdebug.ui.dashboard.DashboardPanel;
 import io.github.serialdebug.ui.dashboard.DashboardConsumer;
 import io.github.serialdebug.ui.chart.WaveChartCanvas;
 import io.github.serialdebug.ui.config.PortHistoryManager;
 import io.github.serialdebug.ui.preset.JsonPresetService;
+import io.github.serialdebug.ui.i18n.LocaleManager;
+import io.github.serialdebug.ui.i18n.Messages;
 import javafx.animation.AnimationTimer;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -49,9 +55,9 @@ public class SessionTabContent extends BorderPane {
     private final RateCalculator rxRateCalc = new RateCalculator();
     private final RateCalculator txRateCalc = new RateCalculator();
 
-    private final Button fileSendBtn = new Button("Send File", new FontIcon("mdi2f-file"));
+    private final Button fileSendBtn = new Button();
     private final Label fileSendProgress = new Label("");
-    private final Button cancelFileSendBtn = new Button("Cancel");
+    private final Button cancelFileSendBtn = new Button();
 
     private final ChartDataBuffer waveBuffer = new ChartDataBuffer();
     private final DataExtractor waveExtractor = new DataExtractor();
@@ -87,10 +93,14 @@ public class SessionTabContent extends BorderPane {
         PortHistoryManager historyManager = new PortHistoryManager();
         toolbarController.setHistoryManager(historyManager);
 
-        Tab ioTab = new Tab("收发视图", createIOView());
+        Tab ioTab = new Tab();
+        ioTab.textProperty().bind(Messages.createStringBinding("io.tab.receive"));
+        ioTab.setContent(createIOView());
         subTabs.addAlwaysActiveTab("io", ioTab, new TextConsumer(hexArea, asciiArea, true));
 
-        Tab chartTab = new Tab("波形图", createChartView());
+        Tab chartTab = new Tab();
+        chartTab.textProperty().bind(Messages.createStringBinding("tab.chart"));
+        chartTab.setContent(createChartView());
         subTabs.addLazyTab("chart", chartTab,
                 new ChartConsumer(waveBuffer, waveExtractor),
                 this::startWaveform, this::stopWaveform);
@@ -101,7 +111,9 @@ public class SessionTabContent extends BorderPane {
                 sendController.appendToSendField(hexResult);
             }
         });
-        Tab crcTab = new Tab("CRC 助手", crcPanel);
+        Tab crcTab = new Tab();
+        crcTab.textProperty().bind(Messages.createStringBinding("tab.crc"));
+        crcTab.setContent(crcPanel);
         subTabs.addLazyTab("crc", crcTab, new PayloadConsumer() {
             @Override public void onPacket(RawPacket packet) { /* CRC is manual, no auto-consumption */ }
         }, null, null);
@@ -114,7 +126,9 @@ public class SessionTabContent extends BorderPane {
 
         // Dashboard tab (lazy, registers DashboardConsumer)
         DashboardPanel dashboardPanel = new DashboardPanel(waveExtractor);
-        Tab dashTab = new Tab("仪表盘", dashboardPanel);
+        Tab dashTab = new Tab();
+        dashTab.textProperty().bind(Messages.createStringBinding("tab.dashboard"));
+        dashTab.setContent(dashboardPanel);
         subTabs.addLazyTab("dash", dashTab,
                 new DashboardConsumer(waveExtractor, dashboardPanel::onExtracted),
                 null, null);
@@ -129,6 +143,9 @@ public class SessionTabContent extends BorderPane {
         fileSendController = new FileSendController(
                 fileSendBtn, fileSendProgress, cancelFileSendBtn,
                 sendController, displayController::updateStats);
+        fileSendBtn.textProperty().bind(Messages.createStringBinding("io.file.send"));
+        fileSendBtn.setGraphic(new FontIcon("mdi2f-file"));
+        cancelFileSendBtn.textProperty().bind(Messages.createStringBinding("io.file.cancel"));
         fileSendBtn.setOnAction(e -> {
             if (fileSendController == null) return;
             if (!toolbarController.isOpen()) {
@@ -176,14 +193,18 @@ public class SessionTabContent extends BorderPane {
         ComboBox<io.github.serialdebug.core.serial.SerialConfig.Parity> parityCombo = new ComboBox<>();
         parityCombo.setPrefWidth(90);
 
-        Button openCloseBtn = new Button("Open", new FontIcon("mdi2p-power-plug"));
+        Button openCloseBtn = new Button();
+        openCloseBtn.textProperty().bind(Messages.createStringBinding("toolbar.open"));
+        openCloseBtn.setGraphic(new FontIcon("mdi2p-power-plug"));
         openCloseBtn.setOnAction(e -> toolbarController.onOpenClose());
 
         Button refreshBtn = new Button(null, new FontIcon("mdi2r-refresh"));
         refreshBtn.setOnAction(e -> toolbarController.refreshPortList());
 
-        Label statusLabel = new Label("Disconnected");
-        Label connectionLabel = new Label("Disconnected");
+        Label statusLabel = new Label();
+        statusLabel.textProperty().bind(Messages.createStringBinding("toolbar.disconnected"));
+        Label connectionLabel = new Label();
+        connectionLabel.textProperty().bind(Messages.createStringBinding("toolbar.disconnected"));
 
         ToolBar portBar = new ToolBar(
                 new Label("Port:"), portCombo, new Separator(),
@@ -212,35 +233,59 @@ public class SessionTabContent extends BorderPane {
         asciiArea = new TextArea();
         asciiArea.setEditable(false);
         asciiArea.getStyleClass().add("mono-text-area");
-        displayTabs.getTabs().addAll(new Tab("HEX", hexArea), new Tab("ASCII", asciiArea));
+        Tab hexTab = new Tab();
+        hexTab.textProperty().bind(Messages.createStringBinding("io.tab.hex"));
+        hexTab.setContent(hexArea);
+        Tab asciiTab = new Tab();
+        asciiTab.textProperty().bind(Messages.createStringBinding("io.tab.ascii"));
+        asciiTab.setContent(asciiArea);
+        displayTabs.getTabs().addAll(hexTab, asciiTab);
+
+        ToggleButton atToggle = new ToggleButton();
+        atToggle.textProperty().bind(Messages.createStringBinding("io.at"));
+        Tooltip atTooltip = new Tooltip();
+        atTooltip.textProperty().bind(Messages.createStringBinding("io.at.tooltip"));
+        atToggle.setTooltip(atTooltip);
 
         TextField searchField = new TextField();
         searchField.setPrefWidth(150);
-        searchField.setPromptText("Search...");
-        ToggleButton filterToggle = new ToggleButton("Filter");
+        searchField.promptTextProperty().bind(Messages.createStringBinding("io.search"));
+        ToggleButton filterToggle = new ToggleButton();
+        filterToggle.textProperty().bind(Messages.createStringBinding("io.filter"));
         ToggleButton caseToggle = new ToggleButton("Aa");
-        Button clearBtn = new Button("Clear", new FontIcon("mdi2c-close"));
-        Button pauseBtn = new Button("Pause", new FontIcon("mdi2p-pause"));
+        Button clearBtn = new Button();
+        clearBtn.textProperty().bind(Messages.createStringBinding("io.clear"));
+        clearBtn.setGraphic(new FontIcon("mdi2c-close"));
+        Button pauseBtn = new Button();
+        pauseBtn.textProperty().bind(Messages.createStringBinding("io.pause"));
+        pauseBtn.setGraphic(new FontIcon("mdi2p-pause"));
 
         clearBtn.setOnAction(e -> displayController.onClear());
         pauseBtn.setOnAction(e -> displayController.onPauseScroll());
 
-        ToolBar searchBar = new ToolBar(clearBtn, pauseBtn, new Separator(),
+        Button langBtn = new Button();
+        langBtn.textProperty().bind(Messages.createStringBinding("lang.switch"));
+        langBtn.setOnAction(e -> LocaleManager.getInstance().toggle());
+
+        ToolBar searchBar = new ToolBar(clearBtn, pauseBtn, atToggle, langBtn, new Separator(),
                 searchField, filterToggle, caseToggle);
 
         VBox sendArea = new VBox(4);
         sendArea.getStyleClass().add("send-area");
         sendArea.setPadding(new Insets(8, 8, 8, 8));
 
-        ToggleButton hexSendToggle = new ToggleButton("HEX");
+        ToggleButton hexSendToggle = new ToggleButton();
+        hexSendToggle.textProperty().bind(Messages.createStringBinding("io.hex.mode"));
         hexSendToggle.setSelected(true);
         TextField sendText = new TextField();
         sendText.setPrefHeight(40);
-        sendText.setPromptText("Enter data to send...");
+        sendText.promptTextProperty().bind(Messages.createStringBinding("io.send.prompt"));
         HBox.setHgrow(sendText, Priority.ALWAYS);
         ComboBox<String> lineEndingCombo = new ComboBox<>();
         lineEndingCombo.setPrefWidth(100);
-        Button sendBtn = new Button("Send", new FontIcon("mdi2s-send"));
+        Button sendBtn = new Button();
+        sendBtn.textProperty().bind(Messages.createStringBinding("io.send"));
+        sendBtn.setGraphic(new FontIcon("mdi2s-send"));
         sendBtn.setDefaultButton(true);
 
         HBox sendRow1 = new HBox(8, hexSendToggle, sendText, lineEndingCombo, sendBtn);
@@ -255,7 +300,9 @@ public class SessionTabContent extends BorderPane {
         intervalField.setPrefWidth(70);
         TextField countField = new TextField("0");
         countField.setPrefWidth(50);
-        Button timerBtn = new Button("Timed", new FontIcon("mdi2t-timer"));
+        Button timerBtn = new Button();
+        timerBtn.textProperty().bind(Messages.createStringBinding("io.timed"));
+        timerBtn.setGraphic(new FontIcon("mdi2t-timer"));
         timerBtn.setOnAction(e -> {
             if (sendController != null) sendController.onTimedSend();
         });
@@ -271,7 +318,104 @@ public class SessionTabContent extends BorderPane {
 
         sendArea.getChildren().addAll(sendRow1, sendRow2, sendRow3);
 
-        view.getChildren().addAll(displayTabs, searchBar, new Separator(), sendArea);
+        // AT template sidebar (embedded in IO tab's send area)
+        VBox atSidebar = new VBox(6);
+        atSidebar.setPrefWidth(220);
+        atSidebar.setMinWidth(220);
+        atSidebar.setPadding(new Insets(6));
+        atSidebar.setStyle("-fx-border-color: #ddd; -fx-border-width: 0 0 0 1;");
+        atSidebar.setVisible(false);
+        atSidebar.managedProperty().bind(atSidebar.visibleProperty());
+
+        Label atTitle = new Label();
+        atTitle.textProperty().bind(Messages.createStringBinding("sidebar.title"));
+        atTitle.getStyleClass().add("section-title");
+
+        TextField atSearch = new TextField();
+        atSearch.promptTextProperty().bind(Messages.createStringBinding("sidebar.search"));
+
+        AtCommandService atService = new JsonAtCommandService();
+        ObservableList<AtCommand> atCommands = FXCollections.observableArrayList();
+        FilteredList<AtCommand> atFiltered = new FilteredList<>(atCommands);
+        atCommands.setAll(atService.load());
+
+        ListView<AtCommand> atList = new ListView<>(atFiltered);
+        atList.setPrefHeight(200);
+        atList.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(AtCommand item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setOnMouseClicked(null);
+                } else {
+                    setText(item.name() + "  " + item.command());
+                    setTooltip(new Tooltip(item.description()));
+                    setOnMouseClicked(e -> sendController.setSendText(item.command()));
+                }
+            }
+        });
+
+        atSearch.textProperty().addListener((obs, old, val) -> {
+            if (val == null || val.isEmpty()) {
+                atFiltered.setPredicate(null);
+            } else {
+                String lower = val.toLowerCase();
+                atFiltered.setPredicate(cmd ->
+                        cmd.name().toLowerCase().contains(lower)
+                                || cmd.command().toLowerCase().contains(lower));
+            }
+        });
+
+        Button atAddBtn = new Button();
+        atAddBtn.textProperty().bind(Messages.createStringBinding("sidebar.add"));
+        atAddBtn.setOnAction(e -> {
+            Dialog<ButtonType> dialog = new Dialog<>();
+            dialog.titleProperty().bind(Messages.createStringBinding("sidebar.add.dialog.title"));
+            DialogPane dialogPane = dialog.getDialogPane();
+            dialogPane.getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+            TextField nameField = new TextField();
+            nameField.promptTextProperty().bind(Messages.createStringBinding("sidebar.add.name"));
+            TextField cmdField = new TextField();
+            cmdField.promptTextProperty().bind(Messages.createStringBinding("sidebar.add.command"));
+            TextField descField = new TextField();
+            descField.promptTextProperty().bind(Messages.createStringBinding("sidebar.add.description"));
+
+            VBox content = new VBox(8,
+                    new Label("名称:"), nameField,
+                    new Label("指令:"), cmdField,
+                    new Label("说明:"), descField);
+            content.setPadding(new Insets(12));
+            dialogPane.setContent(content);
+
+            dialog.showAndWait().ifPresent(result -> {
+                if (result == ButtonType.OK && !nameField.getText().isBlank() && !cmdField.getText().isBlank()) {
+                    atCommands.add(new AtCommand(
+                            nameField.getText().trim(), cmdField.getText().trim(), descField.getText().trim()));
+                    atService.save(atCommands);
+                }
+            });
+        });
+
+        Button atDelBtn = new Button("- 删除");
+        atDelBtn.setOnAction(e -> {
+            AtCommand sel = atList.getSelectionModel().getSelectedItem();
+            if (sel != null) {
+                atCommands.remove(sel);
+                atService.save(atCommands);
+            }
+        });
+
+        HBox atButtons = new HBox(6, atAddBtn, atDelBtn);
+        atSidebar.getChildren().addAll(atTitle, atSearch, atList, atButtons);
+
+        atToggle.selectedProperty().addListener((obs, old, val) -> atSidebar.setVisible(val));
+
+        BorderPane bottomArea = new BorderPane();
+        bottomArea.setCenter(sendArea);
+        bottomArea.setRight(atSidebar);
+        view.getChildren().addAll(displayTabs, searchBar, new Separator(), bottomArea);
 
         displayController = new DisplayController(
                 hexArea, asciiArea, pauseBtn,
@@ -293,14 +437,6 @@ public class SessionTabContent extends BorderPane {
                 serialService, hexParser, asciiParser, logService,
                 txRateCalc, new JsonPresetService());
         sendController.initialize();
-
-        // AT companion tab (added after sendController is initialized)
-        AtCompanionPanel atPanel = new AtCompanionPanel(new JsonAtCommandService(), sendController::setSendText);
-        displayController.setOnResponseReceived(atPanel::appendResponse);
-        Tab atTab = new Tab("AT 伴侣", atPanel);
-        subTabs.addLazyTab("at", atTab, new PayloadConsumer() {
-            @Override public void onPacket(RawPacket pkt) { /* AT companion receives via DisplayController callback */ }
-        }, null, null);
 
         // Wire send button now that controller exists
         wireSendBtn.run();
@@ -348,7 +484,8 @@ public class SessionTabContent extends BorderPane {
         VBox view = new VBox(8);
         view.setPadding(new Insets(12));
 
-        Label title = new Label("最近连接的设备");
+        Label title = new Label();
+        title.textProperty().bind(Messages.createStringBinding("history.title"));
         title.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
 
         ListView<String> historyList = new ListView<>();
@@ -374,11 +511,14 @@ public class SessionTabContent extends BorderPane {
         statusBar.getStyleClass().add("status-bar");
         statusBar.setPadding(new Insets(4, 8, 4, 8));
 
-        Label connLabel = new Label("Disconnected");
+        Label connLabel = new Label();
+        connLabel.textProperty().bind(Messages.createStringBinding("status.disconnected"));
         Pane spacer = new Pane();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        Label rxRateLabel = new Label("RX rate: 0 B/s");
-        Label txRateLabel = new Label("TX rate: 0 B/s");
+        Label rxRateLabel = new Label();
+        rxRateLabel.textProperty().bind(Messages.createStringBinding("status.rx.rate", 0));
+        Label txRateLabel = new Label();
+        txRateLabel.textProperty().bind(Messages.createStringBinding("status.tx.rate", 0));
 
         statusBar.getChildren().addAll(connLabel, spacer, rxRateLabel, txRateLabel);
 

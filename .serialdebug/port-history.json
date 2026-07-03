@@ -1,0 +1,9 @@
+[ {
+  "portName" : "COM18",
+  "baudRate" : 115200,
+  "dataBits" : 8,
+  "stopBits" : 1,
+  "parity" : "NONE",
+  "flowControl" : "NONE",
+  "lastConnected" : 1783065117772
+} ]

@@ -49,7 +49,7 @@ public class LocaleManager {
             Properties props = new Properties();
             props.load(is);
             String lang = props.getProperty(KEY);
-            return lang != null ? Locale.of(lang) : null;
+            return lang != null ? Locale.forLanguageTag(lang) : null;
         } catch (IOException e) {
             return null;
         }
