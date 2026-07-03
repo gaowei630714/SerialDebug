@@ -8,6 +8,17 @@
 <VBox spacing="0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="io.github.serialdebug.ui.controller.MainController">
 
+    <!-- Global menu bar (language switching) -->
+    <MenuBar fx:id="menuBar">
+        <Menu fx:id="settingsMenu">
+            <Menu fx:id="languageMenu">
+                <MenuItem fx:id="langZhItem" />
+                <MenuItem fx:id="langEnItem" />
+            </Menu>
+            <MenuItem fx:id="aboutItem" />
+        </Menu>
+    </MenuBar>
+
     <!-- Global action bar: file send + logging (affect active session) -->
     <ToolBar fx:id="actionBar">
         <Button fx:id="startLoggingButton">

@@ -21,9 +21,7 @@ import io.github.serialdebug.ui.dashboard.DashboardConsumer;
 import io.github.serialdebug.ui.chart.WaveChartCanvas;
 import io.github.serialdebug.ui.config.PortHistoryManager;
 import io.github.serialdebug.ui.preset.JsonPresetService;
-import io.github.serialdebug.ui.i18n.LocaleManager;
 import io.github.serialdebug.ui.i18n.Messages;
-import java.util.Locale;
 import javafx.animation.AnimationTimer;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -83,10 +81,6 @@ public class SessionTabContent extends BorderPane {
                          Button startLoggingButton, Button stopLoggingButton,
                          Label loggingStatusLabel, Stage stage) {
         VBox root = new VBox(0);
-
-        // Menu bar (global, always visible)
-        MenuBar menuBar = createMenuBar();
-        root.getChildren().add(menuBar);
 
         ToolBar portBar = createPortBar();
         root.getChildren().add(portBar);
@@ -181,35 +175,6 @@ public class SessionTabContent extends BorderPane {
                         ? config.getPortName() : Messages.get("io.tab.disconnected"));
             }
         });
-    }
-
-    private MenuBar createMenuBar() {
-        MenuBar menuBar = new MenuBar();
-
-        Menu settingsMenu = new Menu();
-        settingsMenu.textProperty().bind(Messages.createStringBinding("menu.settings"));
-
-        Menu languageMenu = new Menu();
-        languageMenu.textProperty().bind(Messages.createStringBinding("menu.language"));
-
-        MenuItem langZh = new MenuItem();
-        langZh.textProperty().bind(Messages.createStringBinding("lang.chinese"));
-        langZh.setOnAction(e -> LocaleManager.getInstance().set(Locale.CHINESE));
-
-        MenuItem langEn = new MenuItem();
-        langEn.textProperty().bind(Messages.createStringBinding("lang.english"));
-        langEn.setOnAction(e -> LocaleManager.getInstance().set(Locale.ENGLISH));
-
-        languageMenu.getItems().addAll(langZh, langEn);
-
-        MenuItem aboutItem = new MenuItem();
-        aboutItem.textProperty().bind(Messages.createStringBinding("menu.about"));
-        // about can be a no-op for now or show a simple dialog
-
-        settingsMenu.getItems().addAll(languageMenu, aboutItem);
-        menuBar.getMenus().add(settingsMenu);
-
-        return menuBar;
     }
 
     private ToolBar createPortBar() {

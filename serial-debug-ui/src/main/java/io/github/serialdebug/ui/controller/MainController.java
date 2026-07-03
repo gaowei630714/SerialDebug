@@ -3,6 +3,9 @@ package io.github.serialdebug.ui.controller;
 import io.github.serialdebug.ui.session.SerialSession;
 import io.github.serialdebug.ui.session.SessionManager;
 import io.github.serialdebug.ui.session.SessionTabContent;
+import io.github.serialdebug.ui.i18n.LocaleManager;
+import io.github.serialdebug.ui.i18n.Messages;
+import java.util.Locale;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -19,6 +22,13 @@ public class MainController implements Initializable {
 
     @FXML private TabPane mainTabPane;
     @FXML private Tab addTab;
+
+    @FXML private MenuBar menuBar;
+    @FXML private Menu settingsMenu;
+    @FXML private Menu languageMenu;
+    @FXML private MenuItem langZhItem;
+    @FXML private MenuItem langEnItem;
+    @FXML private MenuItem aboutItem;
 
     @FXML private Button startLoggingButton;
     @FXML private Button stopLoggingButton;
@@ -49,6 +59,7 @@ public class MainController implements Initializable {
         });
 
         wireLoggingToolbar();
+        wireMenuBar();
 
         Platform.runLater(() -> {
             Stage stage = (Stage) mainTabPane.getScene().getWindow();
@@ -82,5 +93,18 @@ public class MainController implements Initializable {
         SerialSession session = sessionManager.getActiveSession();
         if (session != null) return session.getTabContent();
         return null;
+    }
+
+    private void wireMenuBar() {
+        // Wire up language menu
+        langZhItem.textProperty().bind(Messages.createStringBinding("lang.chinese"));
+        langEnItem.textProperty().bind(Messages.createStringBinding("lang.english"));
+        langZhItem.setOnAction(e -> LocaleManager.getInstance().set(Locale.CHINESE));
+        langEnItem.setOnAction(e -> LocaleManager.getInstance().set(Locale.ENGLISH));
+
+        // Bind menu titles
+        settingsMenu.textProperty().bind(Messages.createStringBinding("menu.settings"));
+        languageMenu.textProperty().bind(Messages.createStringBinding("menu.language"));
+        aboutItem.textProperty().bind(Messages.createStringBinding("menu.about"));
     }
 }
