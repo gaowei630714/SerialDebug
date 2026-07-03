@@ -5,13 +5,17 @@ import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 
+import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * AT 指令伴侣 panel: left side = template library (ListView + search + add/remove),
@@ -20,6 +24,25 @@ import java.util.function.Consumer;
 public class AtCompanionPanel extends BorderPane {
 
     private static final int MAX_RESPONSE_LINES = 1000;
+
+    private static final List<Function<String, Color>> COLOR_RULES = List.of(
+            text -> {
+                if (text.toUpperCase().contains("+CME ERROR") || text.toUpperCase().contains("+CMS ERROR") || text.toUpperCase().contains("ERROR"))
+                    return Color.web("#e74c3c");
+                return null;
+            },
+            text -> {
+                if (text.toUpperCase().contains("OK"))
+                    return Color.web("#2ecc71");
+                return null;
+            },
+            text -> {
+                if (text.trim().startsWith("+"))
+                    return Color.web("#3498db");
+                return null;
+            },
+            text -> Color.web("#333333")
+    );
 
     private final AtCommandService service;
     private final ObservableList<AtCommand> commands = FXCollections.observableArrayList();
@@ -43,6 +66,15 @@ public class AtCompanionPanel extends BorderPane {
 
         // Right: response display
         buildRightPane();
+
+        // Wrap left and right in a SplitPane
+        Node savedLeft = getLeft();
+        Node savedCenter = getCenter();
+        setLeft(null);
+        setCenter(null);
+        SplitPane splitPane = new SplitPane(savedLeft, savedCenter);
+        splitPane.setDividerPositions(0.4);
+        setCenter(splitPane);
 
         // Wire list selection
         listView.setItems(filteredCommands);
@@ -117,7 +149,7 @@ public class AtCompanionPanel extends BorderPane {
         title.getStyleClass().add("section-title");
 
         responseFlow.setPadding(new Insets(8));
-        responseFlow.setStyle("-fx-background-color: #1e1e1e; -fx-background-radius: 4;");
+        responseFlow.setStyle("-fx-background-color: #f5f5f5; -fx-background-radius: 4;");
         responseFlow.setLineSpacing(2);
         responseFlow.setMinHeight(400);
         responseFlow.setPrefWidth(400);
@@ -145,17 +177,13 @@ public class AtCompanionPanel extends BorderPane {
         Text node = new Text(text + "\n");
         node.setFont(javafx.scene.text.Font.font("Consolas", 13));
 
-        // Keyword coloring
-        String upper = text.toUpperCase();
-        if (upper.contains("+CME ERROR") || upper.contains("+CMS ERROR") || upper.contains("ERROR")) {
-            node.setFill(Color.web("#e74c3c"));
-        } else if (upper.contains("OK")) {
-            node.setFill(Color.web("#2ecc71"));
-        } else if (text.trim().startsWith("+")) {
-            node.setFill(Color.web("#3498db"));
-        } else {
-            node.setFill(Color.web("#e0e0e0"));
-        }
+        // Keyword coloring via rules chain
+        Color color = COLOR_RULES.stream()
+                .map(rule -> rule.apply(text))
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(Color.web("#333333"));
+        node.setFill(color);
 
         responseFlow.getChildren().add(node);
 
