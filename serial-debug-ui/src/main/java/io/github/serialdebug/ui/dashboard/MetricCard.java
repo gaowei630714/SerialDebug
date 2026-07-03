@@ -1,5 +1,7 @@
 package io.github.serialdebug.ui.dashboard;
 
+import io.github.serialdebug.ui.i18n.LocaleManager;
+import io.github.serialdebug.ui.i18n.Messages;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
@@ -38,11 +40,17 @@ public class MetricCard extends VBox {
         valueLabel.setFont(Font.font("Consolas", FontWeight.BOLD, 24));
         valueLabel.getStyleClass().add("metric-card-value");
 
-        statsLabel = new Label("Min: ---  Max: ---");
+        statsLabel = new Label(Messages.get("dashboard.min") + " ---  "
+                + Messages.get("dashboard.max") + " ---");
         statsLabel.getStyleClass().add("metric-card-stats");
 
-        avgLabel = new Label("Avg: ---  N: 0");
+        avgLabel = new Label(Messages.get("dashboard.avg") + " ---  "
+                + Messages.get("dashboard.n") + " 0");
         avgLabel.getStyleClass().add("metric-card-stats");
+
+        LocaleManager.getInstance().localeProperty().addListener((obs, old, locale) -> {
+            if (count > 0) refreshDisplay();
+        });
 
         getChildren().addAll(nameLabel, valueLabel, statsLabel, avgLabel);
         setAlignment(Pos.CENTER_LEFT);
@@ -80,8 +88,10 @@ public class MetricCard extends VBox {
 
     private void refreshDisplay() {
         valueLabel.setText(formatValue(latest));
-        statsLabel.setText("Min: " + formatValue(min) + "  Max: " + formatValue(max));
-        avgLabel.setText("Avg: " + formatValue(getAverage()) + "  N: " + count);
+        statsLabel.setText(Messages.get("dashboard.min") + " " + formatValue(min) + "  "
+                + Messages.get("dashboard.max") + " " + formatValue(max));
+        avgLabel.setText(Messages.get("dashboard.avg") + " " + formatValue(getAverage())
+                + "  " + Messages.get("dashboard.n") + " " + count);
     }
 
     /**

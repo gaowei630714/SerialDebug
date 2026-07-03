@@ -3,6 +3,7 @@ package io.github.serialdebug.ui.at;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import io.github.serialdebug.ui.i18n.Messages;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -69,16 +70,12 @@ public class JsonAtCommandService implements AtCommandService {
      */
     public static List<AtCommand> getDefaults() {
         List<AtCommand> list = new ArrayList<>();
-        list.add(new AtCommand("测试通信", "AT", "Basic communication test"));
-        list.add(new AtCommand("查询厂商", "AT+CGMI", "Request manufacturer identification"));
-        list.add(new AtCommand("查询型号", "AT+CGMM", "Request model identification"));
-        list.add(new AtCommand("查询 IMEI", "AT+CGSN", "Request IMEI number"));
-        list.add(new AtCommand("查询信号强度", "AT+CSQ", "Query signal quality"));
-        list.add(new AtCommand("查询网络注册", "AT+CREG?", "Query network registration"));
-        list.add(new AtCommand("查询 APN", "AT+CGDCONT?", "Query APN configuration"));
-        list.add(new AtCommand("查询电池", "AT+CBC", "Query battery status"));
-        list.add(new AtCommand("查询时间", "AT+CCLK?", "Query real-time clock"));
-        list.add(new AtCommand("重启模块", "AT+CFUN=1,1", "Module reset"));
+        for (int i = 0; i < 10; i++) {
+            list.add(new AtCommand(
+                    Messages.get("at.default." + i + ".name"),
+                    Messages.get("at.default." + i + ".command"),
+                    Messages.get("at.default." + i + ".desc")));
+        }
         return list;
     }
 }

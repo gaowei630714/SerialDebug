@@ -1,6 +1,7 @@
 package io.github.serialdebug.ui.crc;
 
 import io.github.serialdebug.core.crc.CrcEngine;
+import io.github.serialdebug.ui.i18n.Messages;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -36,9 +37,10 @@ public class CrcPanel extends VBox {
         setPadding(new Insets(12));
         getStyleClass().add("crc-panel");
 
-        Label hexLabel = new Label("HEX 输入:");
+        Label hexLabel = new Label();
+        hexLabel.textProperty().bind(Messages.createStringBinding("crc.input"));
         hexField = new TextField();
-        hexField.setPromptText("例: 01 03 00 00 00 01");
+        hexField.promptTextProperty().bind(Messages.createStringBinding("crc.example"));
         HBox.setHgrow(hexField, Priority.ALWAYS);
         HBox inputRow = new HBox(8, hexLabel, hexField);
         inputRow.setAlignment(Pos.CENTER_LEFT);
@@ -64,7 +66,9 @@ public class CrcPanel extends VBox {
             row.resultLabel().setStyle("-fx-font-family: Consolas, monospace; -fx-font-weight: bold;");
             updateLabel(row, new byte[0]);
 
-            Button appendBtn = new Button("追加", new FontIcon("mdi2p-plus"));
+            Button appendBtn = new Button();
+            appendBtn.textProperty().bind(Messages.createStringBinding("crc.append"));
+            appendBtn.setGraphic(new FontIcon("mdi2p-plus"));
             appendBtn.setOnAction(e -> {
                 if (onAppend != null && lastParsed.length > 0) {
                     onAppend.accept(crcToHex(row, lastParsed));

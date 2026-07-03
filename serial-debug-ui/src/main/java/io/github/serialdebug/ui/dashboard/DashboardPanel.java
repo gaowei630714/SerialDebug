@@ -2,6 +2,7 @@ package io.github.serialdebug.ui.dashboard;
 
 import io.github.serialdebug.core.chart.DataExtractor;
 import io.github.serialdebug.core.chart.DataExtractor.ExtractedValue;
+import io.github.serialdebug.ui.i18n.Messages;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -27,7 +28,8 @@ public class DashboardPanel extends BorderPane {
     public DashboardPanel(DataExtractor extractor) {
         this.extractor = extractor;
 
-        Label title = new Label("数据仪表盘 — 数值从串口数据流中提取");
+        Label title = new Label();
+        title.textProperty().bind(Messages.createStringBinding("dashboard.title"));
         title.setPadding(new Insets(8, 12, 4, 12));
         title.getStyleClass().add("section-title");
         setTop(title);
@@ -43,7 +45,8 @@ public class DashboardPanel extends BorderPane {
         scrollPane.setPannable(true);
         setCenter(scrollPane);
 
-        Button clearBtn = new Button("清空统计");
+        Button clearBtn = new Button();
+        clearBtn.textProperty().bind(Messages.createStringBinding("dashboard.clear"));
         clearBtn.setOnAction(e -> resetAll());
         clearBtn.setPadding(new Insets(4, 12, 4, 12));
         BorderPane.setAlignment(clearBtn, Pos.CENTER_RIGHT);
