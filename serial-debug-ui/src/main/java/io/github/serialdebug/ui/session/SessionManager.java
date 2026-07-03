@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import io.github.serialdebug.ui.session.SessionTabContent;
 import java.util.concurrent.atomic.AtomicLong;
+import io.github.serialdebug.ui.i18n.Messages;
 
 /**
  * Manages the lifecycle of multiple serial sessions across a TabPane.
@@ -31,7 +32,7 @@ public class SessionManager {
         sessions.add(session);
 
         Tab tab = new Tab();
-        tab.setText("未连接");
+        tab.setText(io.github.serialdebug.ui.i18n.Messages.get("status.disconnected"));
         tab.setClosable(true);
         tab.setOnClosed(e -> closeSession(session));
 
