@@ -194,7 +194,6 @@ public class SessionTabContent extends BorderPane {
         parityCombo.setPrefWidth(90);
 
         Button openCloseBtn = new Button();
-        openCloseBtn.textProperty().bind(Messages.createStringBinding("toolbar.open"));
         openCloseBtn.setGraphic(new FontIcon("mdi2p-power-plug"));
         openCloseBtn.setOnAction(e -> toolbarController.onOpenClose());
 

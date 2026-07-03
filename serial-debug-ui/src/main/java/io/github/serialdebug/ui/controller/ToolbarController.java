@@ -5,6 +5,8 @@ import io.github.serialdebug.core.serial.SerialPortInfo;
 import io.github.serialdebug.core.serial.SerialService;
 import io.github.serialdebug.ui.config.PortHistoryManager;
 import io.github.serialdebug.ui.i18n.Messages;
+import javafx.beans.binding.Bindings;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -29,6 +31,8 @@ public class ToolbarController {
     private final Label connectionStatusLabel;
     private final SerialService serialService;
     private final AtomicBoolean isOpen = new AtomicBoolean(false);
+    /** Observable connection state — drives button-text binding and stays in sync with {@link #isOpen}. */
+    private final SimpleBooleanProperty connectedProperty = new SimpleBooleanProperty(false);
 
     private BiConsumer<Boolean, SerialConfig> onPortStateChange;
     private PortHistoryManager historyManager;
@@ -54,6 +58,12 @@ public class ToolbarController {
         this.statusLabel = statusLabel;
         this.connectionStatusLabel = connectionStatusLabel;
         this.serialService = serialService;
+
+        // Button text reacts to BOTH connection state and locale changes.
+        openCloseButton.textProperty().bind(
+                Bindings.when(connectedProperty)
+                        .then(Messages.createStringBinding("toolbar.close"))
+                        .otherwise(Messages.createStringBinding("toolbar.open")));
     }
 
     public void setHistoryManager(PortHistoryManager historyManager) {
@@ -184,14 +194,11 @@ public class ToolbarController {
     }
 
     private void updatePortState(boolean connected) {
-        // Unbind button text (pre-bound in SessionTabContent) so we can set it manually
-        openCloseButton.textProperty().unbind();
+        connectedProperty.set(connected);
         if (connected) {
-            openCloseButton.setText(Messages.get("toolbar.close"));
             openCloseButton.getStyleClass().add("btn-danger");
             connectionStatusLabel.setText(Messages.get("toolbar.connected") + ": " + serialService.getCurrentConfig());
         } else {
-            openCloseButton.setText(Messages.get("toolbar.open"));
             openCloseButton.getStyleClass().remove("btn-danger");
             connectionStatusLabel.setText(Messages.get("toolbar.disconnected"));
         }

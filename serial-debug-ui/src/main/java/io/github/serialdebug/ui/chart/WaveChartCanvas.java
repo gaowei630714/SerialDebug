@@ -2,6 +2,7 @@ package io.github.serialdebug.ui.chart;
 
 import io.github.serialdebug.core.chart.ChartDataBuffer;
 import io.github.serialdebug.core.chart.ChartDataBuffer.DataPoint;
+import io.github.serialdebug.ui.i18n.Messages;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
@@ -63,7 +64,7 @@ public class WaveChartCanvas extends Canvas {
 
         if (dataBuffer.isEmpty()) {
             gc.setFill(TEXT_COLOR);
-            gc.fillText("No data — connect serial port and configure extraction rules", 20, h / 2);
+            gc.fillText(Messages.get("waveform.no.data"), 20, h / 2);
             return;
         }
 
