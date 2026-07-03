@@ -13,8 +13,6 @@ import javafx.scene.text.FontWeight;
  */
 public class MetricCard extends VBox {
 
-    private static final int MAX_RESPONSE_LINES = 1000;
-
     private final Label nameLabel;
     private final Label valueLabel;
     private final Label statsLabel;
@@ -51,7 +49,7 @@ public class MetricCard extends VBox {
     }
 
     /** Update card with a new value. Call on FX thread. */
-    public synchronized void update(double value) {
+    public void update(double value) {
         latest = value;
         if (count == 0) {
             min = max = value;
@@ -65,7 +63,7 @@ public class MetricCard extends VBox {
     }
 
     /** Reset all statistics. */
-    public synchronized void reset() {
+    public void reset() {
         latest = 0;
         min = 0;
         max = 0;
@@ -74,11 +72,11 @@ public class MetricCard extends VBox {
         refreshDisplay();
     }
 
-    public synchronized double getLatest() { return latest; }
-    public synchronized double getMin() { return min; }
-    public synchronized double getMax() { return max; }
-    public synchronized double getAverage() { return count > 0 ? sum / count : 0; }
-    public synchronized int getCount() { return count; }
+    public double getLatest() { return latest; }
+    public double getMin() { return min; }
+    public double getMax() { return max; }
+    public double getAverage() { return count > 0 ? sum / count : 0; }
+    public int getCount() { return count; }
 
     private void refreshDisplay() {
         valueLabel.setText(formatValue(latest));
