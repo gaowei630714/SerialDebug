@@ -54,11 +54,11 @@ public class AtCompanionPanel extends BorderPane {
                     setText(null);
                     setOnMouseClicked(null);
                 } else {
-                    setText(item.getName() + "  " + item.getCommand());
-                    setTooltip(new Tooltip(item.getDescription()));
+                    setText(item.name() + "  " + item.command());
+                    setTooltip(new Tooltip(item.description()));
                     setOnMouseClicked(e -> {
-                        if (onCommandSelected != null && item.getCommand() != null) {
-                            onCommandSelected.accept(item.getCommand());
+                        if (onCommandSelected != null && item.command() != null) {
+                            onCommandSelected.accept(item.command());
                         }
                     });
                 }
@@ -72,8 +72,8 @@ public class AtCompanionPanel extends BorderPane {
             } else {
                 String lower = val.toLowerCase();
                 filteredCommands.setPredicate(cmd ->
-                        cmd.getName().toLowerCase().contains(lower)
-                                || cmd.getCommand().toLowerCase().contains(lower));
+                        cmd.name().toLowerCase().contains(lower)
+                                || cmd.command().toLowerCase().contains(lower));
             }
         });
     }
