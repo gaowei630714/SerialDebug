@@ -82,3 +82,23 @@
     -fx-font-size: 11px;
     -fx-text-fill: #555555;
 }
+.metric-card {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e0e0e0;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 2, 0, 0, 1);
+}
+.metric-card-name {
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+    -fx-text-fill: #555555;
+}
+.metric-card-value {
+    -fx-text-fill: #2c3e50;
+}
+.metric-card-stats {
+    -fx-font-size: 10px;
+    -fx-text-fill: #888888;
+    -fx-font-family: "Consolas", "Monaco", "Courier New", monospace;
+}
