@@ -128,6 +128,13 @@ public class SendController {
         sendButton.setDisable(!open);
     }
 
+    /** Set the send text field value (used by AT companion to fill commands). */
+    public void setSendText(String text) {
+        if (text != null && sendTextField != null) {
+            sendTextField.setText(text);
+        }
+    }
+
     public void shutdown() {
         if (timerExecutor != null) timerExecutor.shutdownNow();
     }
