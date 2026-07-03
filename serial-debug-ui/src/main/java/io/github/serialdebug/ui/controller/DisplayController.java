@@ -244,10 +244,10 @@ public class DisplayController {
         Platform.runLater(() -> {
             long rx = serialService.getBytesReceived();
             long tx = serialService.getBytesSent();
-            if (rxCountLabel != null) rxCountLabel.setText("RX: " + rx + " bytes");
-            if (txCountLabel != null) txCountLabel.setText("TX: " + tx + " bytes");
-            if (statusRxLabel != null) statusRxLabel.setText("RX: " + rx);
-            if (statusTxLabel != null) statusTxLabel.setText("TX: " + tx);
+            if (rxCountLabel != null) rxCountLabel.setText(Messages.get("status.rx.bytes", rx));
+            if (txCountLabel != null) txCountLabel.setText(Messages.get("status.tx.bytes", tx));
+            if (statusRxLabel != null) statusRxLabel.setText(Messages.get("status.rx.short", rx));
+            if (statusTxLabel != null) statusTxLabel.setText(Messages.get("status.tx.short", tx));
         });
     }
 }

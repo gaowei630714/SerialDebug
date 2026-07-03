@@ -104,7 +104,7 @@ public class ToolbarController {
                 portCombo.getSelectionModel().select(0);
             }
         } catch (Exception e) {
-            UiHelper.showError("Failed to list ports", e);
+            UiHelper.showError(Messages.get("error.list.ports"), e);
         }
     }
 
@@ -123,17 +123,17 @@ public class ToolbarController {
     private void openPort() {
         SerialPortInfo selectedPort = portCombo.getValue();
         if (selectedPort == null) {
-            UiHelper.showWarning("Please select a serial port");
+            UiHelper.showWarning(Messages.get("warning.select.port"));
             return;
         }
         Integer baudRate = parseComboInt(baudRateCombo, "baud rate");
         if (baudRate == null) return;
         Integer dataBits = dataBitsCombo.getValue();
-        if (dataBits == null) { UiHelper.showWarning("Please select data bits"); return; }
+        if (dataBits == null) { UiHelper.showWarning(Messages.get("warning.select.data.bits")); return; }
         Integer stopBits = stopBitsCombo.getValue();
-        if (stopBits == null) { UiHelper.showWarning("Please select stop bits"); return; }
+        if (stopBits == null) { UiHelper.showWarning(Messages.get("warning.select.stop.bits")); return; }
         SerialConfig.Parity parity = parityCombo.getValue();
-        if (parity == null) { UiHelper.showWarning("Please select parity"); return; }
+        if (parity == null) { UiHelper.showWarning(Messages.get("warning.select.parity")); return; }
 
         SerialConfig config = new SerialConfig();
         config.setPortName(selectedPort.getSystemPortName());
@@ -153,7 +153,7 @@ public class ToolbarController {
                 onPortStateChange.accept(true, config);
             }
         } catch (IOException e) {
-            UiHelper.showError("Failed to open port", e);
+            UiHelper.showError(Messages.get("warning.open.port"), e);
         }
     }
 
@@ -178,14 +178,14 @@ public class ToolbarController {
     private Integer parseComboInt(ComboBox<Integer> combo, String fieldName) {
         Object val = combo.getValue();
         if (val == null) {
-            UiHelper.showWarning("Please select " + fieldName);
+            UiHelper.showWarning(Messages.get("warning.select.field", fieldName));
             return null;
         }
         if (val instanceof Integer i) return i;
         if (val instanceof String s) {
             try { return Integer.parseInt(s.trim()); }
             catch (NumberFormatException e) {
-                UiHelper.showWarning("Invalid " + fieldName + ": " + s);
+                UiHelper.showWarning(Messages.get("error.invalid.field", fieldName, s));
                 return null;
             }
         }

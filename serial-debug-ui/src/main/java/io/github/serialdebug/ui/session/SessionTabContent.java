@@ -118,7 +118,9 @@ public class SessionTabContent extends BorderPane {
         }, null, null);
 
         // Connection history tab
-        Tab historyTab = new Tab("连接历史", createHistoryView(historyManager));
+        Tab historyTab = new Tab();
+        historyTab.textProperty().bind(Messages.createStringBinding("tab.history"));
+        historyTab.setContent(createHistoryView(historyManager));
         subTabs.addLazyTab("history", historyTab, new PayloadConsumer() {
             @Override public void onPacket(RawPacket packet) { /* History is static */ }
         }, null, null);
@@ -504,7 +506,7 @@ public class SessionTabContent extends BorderPane {
         }
 
         if (history.isEmpty()) {
-            historyList.getItems().add("暂无连接历史");
+            historyList.getItems().add(Messages.get("history.empty"));
         }
 
         view.getChildren().addAll(title, historyList);

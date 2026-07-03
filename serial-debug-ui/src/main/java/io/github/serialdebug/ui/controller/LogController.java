@@ -2,6 +2,7 @@ package io.github.serialdebug.ui.controller;
 
 import io.github.serialdebug.core.log.LogFormat;
 import io.github.serialdebug.core.log.LogService;
+import io.github.serialdebug.ui.i18n.Messages;
 import javafx.application.Platform;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -60,7 +61,7 @@ public class LogController {
 
     public void onStartLogging() {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Save Log File");
+        fileChooser.setTitle(Messages.get("filechooser.log.title"));
         fileChooser.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter("Log Files", "*.log", "*.txt"),
                 new FileChooser.ExtensionFilter("All Files", "*.*")

@@ -1,5 +1,6 @@
 package io.github.serialdebug.ui.controller;
 
+import io.github.serialdebug.ui.i18n.Messages;
 import javafx.application.Platform;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -57,7 +58,7 @@ public class FileSendController {
 
     public void onFileSend() {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Select file to send");
+        fileChooser.setTitle(Messages.get("filechooser.send.title"));
         fileChooser.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter("All Files", "*.*"),
                 new FileChooser.ExtensionFilter("Binary", "*.bin"),

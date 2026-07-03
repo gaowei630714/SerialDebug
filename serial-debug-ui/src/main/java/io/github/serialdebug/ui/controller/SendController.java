@@ -343,7 +343,7 @@ public class SendController {
 
     private void openEditDialog() {
         Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("编辑指令预设");
+        dialog.setTitle(Messages.get("preset.edit.title"));
         dialog.initOwner(editPresetsButton.getScene().getWindow());
 
         DialogPane dialogPane = dialog.getDialogPane();
@@ -355,23 +355,27 @@ public class SendController {
         table.setPrefHeight(300);
         table.setPrefWidth(480);
 
-        TableColumn<Preset, String> nameCol = new TableColumn<>("名称");
+        TableColumn<Preset, String> nameCol = new TableColumn<>();
+        nameCol.setText(Messages.get("preset.name"));
         nameCol.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getName()));
         nameCol.setCellFactory(col -> new PresetTextFieldCell());
         nameCol.setOnEditCommit(e -> e.getRowValue().setName(e.getNewValue()));
         nameCol.setPrefWidth(160);
 
-        TableColumn<Preset, String> dataCol = new TableColumn<>("数据");
+        TableColumn<Preset, String> dataCol = new TableColumn<>();
+        dataCol.setText(Messages.get("preset.data"));
         dataCol.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getData()));
         dataCol.setCellFactory(col -> new PresetTextFieldCell());
         dataCol.setOnEditCommit(e -> e.getRowValue().setData(e.getNewValue()));
         dataCol.setPrefWidth(260);
 
-        TableColumn<Preset, Void> actionCol = new TableColumn<>("操作");
+        TableColumn<Preset, Void> actionCol = new TableColumn<>();
+        actionCol.setText(Messages.get("preset.action"));
         actionCol.setPrefWidth(60);
         actionCol.setCellFactory(col -> new TableCell<>() {
-            private final Button delBtn = new Button("删除");
+            private final Button delBtn = new Button();
             {
+                delBtn.textProperty().bind(Messages.createStringBinding("preset.delete"));
                 delBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #e74c3c; -fx-cursor: hand;");
                 delBtn.setOnAction(e -> {
                     Preset p = getTableRow().getItem();
@@ -388,8 +392,9 @@ public class SendController {
 
         table.getColumns().addAll(nameCol, dataCol, actionCol);
 
-        Button addRowBtn = new Button("+ 新增");
-        addRowBtn.setOnAction(e -> presets.add(new Preset("新预设", "")));
+        Button addRowBtn = new Button();
+        addRowBtn.textProperty().bind(Messages.createStringBinding("preset.add"));
+        addRowBtn.setOnAction(e -> presets.add(new Preset(Messages.get("preset.default.name"), "")));
 
         VBox content = new VBox(8, table, addRowBtn);
         content.setPadding(new javafx.geometry.Insets(8, 0, 0, 0));
