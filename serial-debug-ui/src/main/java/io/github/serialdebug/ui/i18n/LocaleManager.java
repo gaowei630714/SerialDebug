@@ -6,6 +6,7 @@ import java.io.*;
 import java.nio.file.*;
 import java.util.Locale;
 import java.util.Properties;
+import java.util.ResourceBundle;
 
 public class LocaleManager {
 
@@ -29,6 +30,7 @@ public class LocaleManager {
 
     public void set(Locale locale) {
         volatileLocale = locale;
+        ResourceBundle.clearCache();
         currentLocale.set(locale);
         saveLocale(locale);
     }
