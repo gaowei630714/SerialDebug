@@ -55,6 +55,7 @@ public class DisplayController {
     private final AtomicBoolean batchPending = new AtomicBoolean(false);
 
     private Consumer<Boolean> onAutoScrollPaused;
+    private Consumer<String> onResponseReceived;
 
     public DisplayController(
             TextArea hexViewArea,
@@ -93,6 +94,11 @@ public class DisplayController {
 
     public void setOnAutoScrollPaused(Consumer<Boolean> callback) {
         this.onAutoScrollPaused = callback;
+    }
+
+    /** Register a callback for received response text (called on FX thread). */
+    public void setOnResponseReceived(Consumer<String> callback) {
+        this.onResponseReceived = callback;
     }
 
     public void initialize() {
@@ -175,6 +181,9 @@ public class DisplayController {
             }
             hexViewArea.appendText("[" + e.timestamp + " " + e.dir + "] " + e.hex + "\n");
             asciiViewArea.appendText("[" + e.timestamp + " " + e.dir + "] " + e.ascii + "\n");
+            if (onResponseReceived != null) {
+                onResponseReceived.accept("[" + e.timestamp + " " + e.dir + "] " + e.ascii);
+            }
         }
         // Always buffer for search/filter
         synchronized (bufferLock) {
