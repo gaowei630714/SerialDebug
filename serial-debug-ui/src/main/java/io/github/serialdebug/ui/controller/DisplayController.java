@@ -7,6 +7,7 @@ import io.github.serialdebug.core.log.Direction;
 import io.github.serialdebug.core.log.LogService;
 import io.github.serialdebug.core.serial.SerialService;
 import io.github.serialdebug.core.util.RateCalculator;
+import io.github.serialdebug.ui.i18n.Messages;
 import javafx.application.Platform;
 import javafx.scene.control.*;
 
@@ -116,10 +117,10 @@ public class DisplayController {
     public void onPauseScroll() {
         autoScrollPaused = !autoScrollPaused;
         if (autoScrollPaused) {
-            pauseScrollButton.setText("Resume");
+            pauseScrollButton.setText(Messages.get("io.resume"));
             pauseScrollButton.getStyleClass().add("btn-warning");
         } else {
-            pauseScrollButton.setText("Pause");
+            pauseScrollButton.setText(Messages.get("io.pause"));
             pauseScrollButton.getStyleClass().remove("btn-warning");
             hexViewArea.setScrollTop(Double.MAX_VALUE);
             asciiViewArea.setScrollTop(Double.MAX_VALUE);

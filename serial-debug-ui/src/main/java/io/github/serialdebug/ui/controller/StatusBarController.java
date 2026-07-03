@@ -2,6 +2,8 @@ package io.github.serialdebug.ui.controller;
 
 import io.github.serialdebug.core.serial.SerialConfig;
 import io.github.serialdebug.core.util.RateCalculator;
+import io.github.serialdebug.ui.i18n.Messages;
+import io.github.serialdebug.ui.i18n.LocaleManager;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -48,6 +50,9 @@ public class StatusBarController {
             clockLabel.setText(LocalTime.now().format(clockFormatter));
         }
 
+        // Refresh rate labels when locale changes
+        LocaleManager.getInstance().localeProperty().addListener((obs, old, locale) -> updateRateLabels());
+
         // Update rate labels + clock every 1 second
         rateClockTimer = new Timeline(
                 new KeyFrame(Duration.seconds(1), e -> updateRateLabels()),
@@ -70,21 +75,21 @@ public class StatusBarController {
     public void updateConnectionStatus(boolean connected, SerialConfig config) {
         if (connectionStatusLabel == null) return;
         if (connected && config != null) {
-            connectionStatusLabel.setText("Connected: " + config);
+            connectionStatusLabel.setText(Messages.get("status.connected") + ": " + config);
         } else {
-            connectionStatusLabel.setText("Disconnected");
+            connectionStatusLabel.setText(Messages.get("status.disconnected"));
         }
     }
 
     public void updateRateLabels() {
         double rxRate = rxRateCalc.getRate();
         double txRate = txRateCalc.getRate();
-        if (rxRateLabel != null) rxRateLabel.setText(String.format("RX rate: %.1f B/s", rxRate));
-        if (txRateLabel != null) txRateLabel.setText(String.format("TX rate: %.1f B/s", txRate));
+        if (rxRateLabel != null) rxRateLabel.setText(Messages.get("status.rx.rate", rxRate));
+        if (txRateLabel != null) txRateLabel.setText(Messages.get("status.tx.rate", txRate));
     }
 
     public void resetRateLabels() {
-        rxRateLabel.setText("RX rate: 0 B/s");
-        txRateLabel.setText("TX rate: 0 B/s");
+        if (rxRateLabel != null) rxRateLabel.setText(Messages.get("status.rx.rate", 0));
+        if (txRateLabel != null) txRateLabel.setText(Messages.get("status.tx.rate", 0));
     }
 }

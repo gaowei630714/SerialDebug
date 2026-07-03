@@ -7,6 +7,7 @@ import io.github.serialdebug.core.log.Direction;
 import io.github.serialdebug.core.log.LogService;
 import io.github.serialdebug.core.serial.SerialService;
 import io.github.serialdebug.core.util.RateCalculator;
+import io.github.serialdebug.ui.i18n.Messages;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -230,7 +231,7 @@ public class SendController {
             // Stop running timer
             timedSendFuture.cancel(false);
             timedSendFuture = null;
-            timedSendButton.setText("Timed");
+            timedSendButton.setText(Messages.get("io.timed"));
             timedSendButton.getStyleClass().remove("btn-active");
             timedSendButton.setGraphic(new FontIcon("mdi2t-timer"));
             return;
@@ -266,7 +267,7 @@ public class SendController {
         }
 
         timedSendRemaining.set(count);
-        timedSendButton.setText("Stop");
+        timedSendButton.setText(Messages.get("io.stop"));
         timedSendButton.getStyleClass().add("btn-active");
         timedSendButton.setGraphic(new FontIcon("mdi2s-stop"));
 
@@ -275,7 +276,7 @@ public class SendController {
                 javafx.application.Platform.runLater(() -> {
                     timedSendFuture.cancel(false);
                     timedSendFuture = null;
-                    timedSendButton.setText("Timed");
+                    timedSendButton.setText(Messages.get("io.timed"));
                     timedSendButton.getStyleClass().remove("btn-active");
                     timedSendButton.setGraphic(new FontIcon("mdi2t-timer"));
                 });

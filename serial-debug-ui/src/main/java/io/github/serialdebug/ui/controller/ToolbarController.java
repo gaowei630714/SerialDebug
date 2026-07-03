@@ -4,6 +4,7 @@ import io.github.serialdebug.core.serial.SerialConfig;
 import io.github.serialdebug.core.serial.SerialPortInfo;
 import io.github.serialdebug.core.serial.SerialService;
 import io.github.serialdebug.ui.config.PortHistoryManager;
+import io.github.serialdebug.ui.i18n.Messages;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -135,7 +136,7 @@ public class ToolbarController {
             serialService.open(config);
             isOpen.set(true);
             updatePortState(true);
-            statusLabel.setText("Connected: " + config);
+            statusLabel.setText(Messages.get("toolbar.connected") + ": " + config);
             // Save to history for next time
             if (historyManager != null) historyManager.save(config);
             if (onPortStateChange != null) {
@@ -153,7 +154,7 @@ public class ToolbarController {
         } finally {
             isOpen.set(false);
             updatePortState(false);
-            statusLabel.setText("Disconnected");
+            statusLabel.setText(Messages.get("toolbar.disconnected"));
             if (onPortStateChange != null) {
                 onPortStateChange.accept(false, null);
             }
@@ -183,14 +184,16 @@ public class ToolbarController {
     }
 
     private void updatePortState(boolean connected) {
+        // Unbind button text (pre-bound in SessionTabContent) so we can set it manually
+        openCloseButton.textProperty().unbind();
         if (connected) {
-            openCloseButton.setText("Close");
+            openCloseButton.setText(Messages.get("toolbar.close"));
             openCloseButton.getStyleClass().add("btn-danger");
-            connectionStatusLabel.setText("Connected: " + serialService.getCurrentConfig());
+            connectionStatusLabel.setText(Messages.get("toolbar.connected") + ": " + serialService.getCurrentConfig());
         } else {
-            openCloseButton.setText("Open");
+            openCloseButton.setText(Messages.get("toolbar.open"));
             openCloseButton.getStyleClass().remove("btn-danger");
-            connectionStatusLabel.setText("Disconnected");
+            connectionStatusLabel.setText(Messages.get("toolbar.disconnected"));
         }
     }
 }
