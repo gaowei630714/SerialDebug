@@ -30,9 +30,9 @@ public class AtCompanionPanel extends BorderPane {
     private final TextFlow responseFlow = new TextFlow();
     private final TextField searchField = new TextField();
 
-    public AtCompanionPanel(Consumer<String> onCommandSelected) {
+    public AtCompanionPanel(AtCommandService service, Consumer<String> onCommandSelected) {
         this.onCommandSelected = onCommandSelected;
-        this.service = new AtCommandService();
+        this.service = service;
         this.filteredCommands = new FilteredList<>(commands);
 
         // Load commands

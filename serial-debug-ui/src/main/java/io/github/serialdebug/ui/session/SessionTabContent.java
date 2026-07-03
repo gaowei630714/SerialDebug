@@ -14,6 +14,7 @@ import io.github.serialdebug.ui.controller.*;
 import io.github.serialdebug.ui.subtab.*;
 import io.github.serialdebug.ui.crc.CrcPanel;
 import io.github.serialdebug.ui.at.AtCompanionPanel;
+import io.github.serialdebug.ui.at.JsonAtCommandService;
 import io.github.serialdebug.ui.dashboard.DashboardPanel;
 import io.github.serialdebug.ui.dashboard.DashboardConsumer;
 import io.github.serialdebug.ui.chart.WaveChartCanvas;
@@ -294,7 +295,7 @@ public class SessionTabContent extends BorderPane {
         sendController.initialize();
 
         // AT companion tab (added after sendController is initialized)
-        AtCompanionPanel atPanel = new AtCompanionPanel(sendController::setSendText);
+        AtCompanionPanel atPanel = new AtCompanionPanel(new JsonAtCommandService(), sendController::setSendText);
         displayController.setOnResponseReceived(atPanel::appendResponse);
         Tab atTab = new Tab("AT 伴侣", atPanel);
         subTabs.addLazyTab("at", atTab, new PayloadConsumer() {
