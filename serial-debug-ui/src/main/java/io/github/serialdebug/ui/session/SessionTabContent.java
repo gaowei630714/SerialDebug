@@ -149,7 +149,7 @@ public class SessionTabContent extends BorderPane {
         fileSendBtn.setOnAction(e -> {
             if (fileSendController == null) return;
             if (!toolbarController.isOpen()) {
-                UiHelper.showWarning("请先打开串口");
+                UiHelper.showWarning(Messages.get("warning.open.port.first"));
                 return;
             }
             fileSendController.onFileSend();
@@ -173,7 +173,7 @@ public class SessionTabContent extends BorderPane {
             }
             if (session.getTab() != null) {
                 session.getTab().setText(isConnected && config != null
-                        ? config.getPortName() : "未连接");
+                        ? config.getPortName() : Messages.get("io.tab.disconnected"));
             }
         });
     }
@@ -252,7 +252,8 @@ public class SessionTabContent extends BorderPane {
         searchField.promptTextProperty().bind(Messages.createStringBinding("io.search"));
         ToggleButton filterToggle = new ToggleButton();
         filterToggle.textProperty().bind(Messages.createStringBinding("io.filter"));
-        ToggleButton caseToggle = new ToggleButton("Aa");
+        ToggleButton caseToggle = new ToggleButton();
+        caseToggle.textProperty().bind(Messages.createStringBinding("io.case"));
         Button clearBtn = new Button();
         clearBtn.textProperty().bind(Messages.createStringBinding("io.clear"));
         clearBtn.setGraphic(new FontIcon("mdi2c-close"));
@@ -382,10 +383,16 @@ public class SessionTabContent extends BorderPane {
             TextField descField = new TextField();
             descField.promptTextProperty().bind(Messages.createStringBinding("sidebar.add.description"));
 
+            Label nameLabel = new Label();
+            nameLabel.textProperty().bind(Messages.createStringBinding("sidebar.add.name"));
+            Label cmdLabel = new Label();
+            cmdLabel.textProperty().bind(Messages.createStringBinding("sidebar.add.command"));
+            Label descLabel = new Label();
+            descLabel.textProperty().bind(Messages.createStringBinding("sidebar.add.description"));
             VBox content = new VBox(8,
-                    new Label("名称:"), nameField,
-                    new Label("指令:"), cmdField,
-                    new Label("说明:"), descField);
+                    nameLabel, nameField,
+                    cmdLabel, cmdField,
+                    descLabel, descField);
             content.setPadding(new Insets(12));
             dialogPane.setContent(content);
 
@@ -398,7 +405,8 @@ public class SessionTabContent extends BorderPane {
             });
         });
 
-        Button atDelBtn = new Button("- 删除");
+        Button atDelBtn = new Button();
+        atDelBtn.textProperty().bind(Messages.createStringBinding("sidebar.delete"));
         atDelBtn.setOnAction(e -> {
             AtCommand sel = atList.getSelectionModel().getSelectedItem();
             if (sel != null) {
@@ -449,9 +457,10 @@ public class SessionTabContent extends BorderPane {
         view.setPadding(new Insets(4));
 
         TextField ruleField = new TextField();
-        ruleField.setPromptText("例: T=([\\d.]+)|H=([\\d.]+)");
+        ruleField.promptTextProperty().bind(Messages.createStringBinding("waveform.placeholder"));
         HBox.setHgrow(ruleField, Priority.ALWAYS);
-        Button applyBtn = new Button("应用");
+        Button applyBtn = new Button();
+        applyBtn.textProperty().bind(Messages.createStringBinding("waveform.apply"));
         applyBtn.setOnAction(e -> {
             waveExtractor.clearRules();
             String text = ruleField.getText();
@@ -464,12 +473,16 @@ public class SessionTabContent extends BorderPane {
                 }
             }
         });
-        Button clearBtn = new Button("清空");
+        Button clearBtn = new Button();
+        clearBtn.textProperty().bind(Messages.createStringBinding("waveform.clear"));
         clearBtn.setOnAction(e -> waveBuffer.clear());
-        CheckBox autoScrollCheck = new CheckBox("自动滚动");
+        CheckBox autoScrollCheck = new CheckBox();
+        autoScrollCheck.textProperty().bind(Messages.createStringBinding("waveform.auto.scroll"));
         autoScrollCheck.setSelected(true);
 
-        ToolBar chartBar = new ToolBar(new Label("规则:"), ruleField, applyBtn, clearBtn, autoScrollCheck);
+        Label ruleLabel = new Label();
+        ruleLabel.textProperty().bind(Messages.createStringBinding("waveform.rule"));
+        ToolBar chartBar = new ToolBar(ruleLabel, ruleField, applyBtn, clearBtn, autoScrollCheck);
 
         StackPane canvasPane = new StackPane(waveCanvas);
         waveCanvas.widthProperty().bind(canvasPane.widthProperty());
