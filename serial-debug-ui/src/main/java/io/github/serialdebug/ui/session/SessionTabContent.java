@@ -263,7 +263,11 @@ public class SessionTabContent extends BorderPane {
 
         Button langBtn = new Button();
         langBtn.textProperty().bind(Messages.createStringBinding("lang.switch"));
+        langBtn.setGraphic(new FontIcon("mdi2w-web"));
         langBtn.setOnAction(e -> LocaleManager.getInstance().toggle());
+        Tooltip langTooltip = new Tooltip();
+        langTooltip.textProperty().bind(Messages.createStringBinding("lang.switch.tooltip"));
+        langBtn.setTooltip(langTooltip);
 
         ToolBar searchBar = new ToolBar(clearBtn, pauseBtn, atToggle, langBtn, new Separator(),
                 searchField, filterToggle, caseToggle);
