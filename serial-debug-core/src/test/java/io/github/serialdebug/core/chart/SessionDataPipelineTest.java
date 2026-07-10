@@ -55,6 +55,42 @@ class SessionDataPipelineTest {
     }
 
     @Test
+    void shouldReturnExactCountAndDrainAllPackets() {
+        SessionDataPipeline p = new SessionDataPipeline();
+        List<String> received = new ArrayList<>();
+        p.register(pkt -> received.add(new String(pkt.data(), pkt.offset(), pkt.length())));
+
+        p.publish("one".getBytes(), 0, 3, Direction.RX);
+        p.publish("two".getBytes(), 0, 3, Direction.RX);
+        p.publish("three".getBytes(), 0, 5, Direction.RX);
+
+        int drained = p.dispatch();
+
+        assertEquals(3, drained, "dispatch() must return the number of packets drained");
+        assertEquals(List.of("one", "two", "three"), received);
+        assertTrue(p.isEmpty(), "buffer must be empty after a full drain");
+    }
+
+    @Test
+    void shouldDrainIncrementallyAcrossMultiplePumps() {
+        SessionDataPipeline p = new SessionDataPipeline();
+        List<String> received = new ArrayList<>();
+        p.register(pkt -> received.add(new String(pkt.data(), pkt.offset(), pkt.length())));
+
+        // First burst
+        p.publish("a".getBytes(), 0, 1, Direction.RX);
+        p.publish("b".getBytes(), 0, 1, Direction.RX);
+        assertEquals(2, p.dispatch());
+
+        // Second burst arrives after the first pump
+        p.publish("c".getBytes(), 0, 1, Direction.RX);
+        assertEquals(1, p.dispatch());
+
+        assertEquals(List.of("a", "b", "c"), received);
+        assertTrue(p.isEmpty());
+    }
+
+    @Test
     void shouldPreserveDirection() {
         SessionDataPipeline p = new SessionDataPipeline(16);
         final Direction[] dir = new Direction[1];
