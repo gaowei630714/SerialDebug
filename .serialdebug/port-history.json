@@ -1,4 +1,20 @@
 [ {
+  "portName" : "COM20",
+  "baudRate" : 115200,
+  "dataBits" : 8,
+  "stopBits" : 1,
+  "parity" : "NONE",
+  "flowControl" : "NONE",
+  "lastConnected" : 1783590186926
+}, {
+  "portName" : "COM21",
+  "baudRate" : 115200,
+  "dataBits" : 8,
+  "stopBits" : 1,
+  "parity" : "NONE",
+  "flowControl" : "NONE",
+  "lastConnected" : 1783583380729
+}, {
   "portName" : "COM18",
   "baudRate" : 115200,
   "dataBits" : 8,

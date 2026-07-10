@@ -8,11 +8,29 @@ import io.github.serialdebug.core.parser.AsciiParser;
 import io.github.serialdebug.core.log.Direction;
 import javafx.application.Platform;
 import javafx.scene.control.TextArea;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Consumes raw packets and renders as HEX/ASCII text with batched flush.
+ * Consumes raw packets and renders them as HEX/ASCII text with a batched flush.
+ *
+ * <h2>Batching strategy</h2>
+ * Incoming packets are appended to an in-memory {@code StringBuilder} and flushed
+ * to the JavaFX {@code TextArea} on the <em>earlier</em> of:
+ * <ul>
+ *   <li>the flush interval ({@value #FLUSH_INTERVAL_NS} ns ≈ 16 ms, ~60 fps), or</li>
+ *   <li>the byte threshold ({@value #FLUSH_SIZE_THRESHOLD} chars).</li>
+ * </ul>
+ * This coalesces the high-frequency jSerialComm callback into a bounded number of
+ * {@code Platform.runLater} calls so the FX thread is not flooded.
+ *
+ * <p>A flush is logged at DEBUG with the byte size so the log shows the
+ * cadence of UI updates — a long gap between flushes while bytes are arriving
+ * indicates the dispatch timer is not running.</p>
  */
 public class TextConsumer implements PayloadConsumer {
+
+    private static final Logger LOG = LoggerFactory.getLogger(TextConsumer.class);
 
     private static final long FLUSH_INTERVAL_NS = 16_000_000L;
     private static final int FLUSH_SIZE_THRESHOLD = 4096;
@@ -69,6 +87,7 @@ public class TextConsumer implements PayloadConsumer {
         if (hexBatch.length() > 0) {
             final String hexText = hexBatch.toString();
             final String asciiText = asciiBatch.toString();
+            int byteLen = hexBatch.length();
             hexBatch.setLength(0);
             asciiBatch.setLength(0);
             lastFlush = System.nanoTime();
@@ -80,6 +99,7 @@ public class TextConsumer implements PayloadConsumer {
                 hexArea.setScrollTop(Double.MAX_VALUE);
                 asciiArea.setScrollTop(Double.MAX_VALUE);
             }
+            LOG.debug("flushed {} chars to HEX/ASCII view", byteLen);
         }
     }
 

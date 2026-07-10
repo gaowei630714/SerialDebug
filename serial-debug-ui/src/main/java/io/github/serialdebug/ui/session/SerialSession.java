@@ -10,7 +10,17 @@ import java.util.function.Consumer;
 
 /**
  * Represents a single serial port session.
- * Each session has its own SerialService, data pipeline, config, and lifecycle.
+ * Each session has its own {@link SerialService}, {@link SessionDataPipeline},
+ * config, and UI tab.
+ *
+ * <h2>Wiring note — why the listener is attached in the constructor</h2>
+ * The {@code dataListener} callback is registered with the {@link SerialService}
+ * <em>before</em> {@link SerialService#open} is called. That ordering matters:
+ * {@code JSerialCommService.open} checks {@code if (dataListener != null)} and only
+ * attaches the live listener to the port when one is already registered.
+ *
+ * <p>The callback copies every chunk into the pipeline's ring buffer — which is
+ * thread-safe (the jSerialComm thread produces, the dispatch timer consumes).</p>
  */
 public class SerialSession {
 
@@ -26,7 +36,8 @@ public class SerialSession {
         this.sessionId = sessionId;
         this.serialService = new JSerialCommService();
         this.pipeline = new SessionDataPipeline();
-        // Wire serial data into pipeline
+        // Wire serial data into the pipeline. Must happen BEFORE open() so
+        // JSerialCommService.open attaches the live listener — see class Javadoc.
         this.serialService.setDataListener(data ->
                 pipeline.publish(data, 0, data.length, Direction.RX));
     }

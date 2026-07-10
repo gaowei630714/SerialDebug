@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SerialDebug runtime logging configuration.
+
+  - Console:  INFO level, low noise for normal use.
+  - File:     DEBUG level, rolling, captures per-chunk RX evidence needed to
+              diagnose intermittent "RX bytes frozen" failures.
+
+  The file appender writes to %USERPROFILE%/.serialdebug/logs/ so the user can
+  attach the log when reporting a freeze. 10 MB per file, keep 5 archives.
+-->
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${user.home}/.serialdebug/logs/serialdebug.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${user.home}/.serialdebug/logs/serialdebug.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>5</maxHistory>
+            <totalSizeCap>50MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{48} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Serial I/O: keep at DEBUG so every received chunk is recorded. -->
+    <logger name="io.github.serialdebug.core.serial" level="DEBUG"/>
+
+    <!-- Pipeline / consumers: INFO is enough unless chasing a dispatch issue. -->
+    <logger name="io.github.serialdebug.core.chart" level="INFO"/>
+    <logger name="io.github.serialdebug.ui" level="INFO"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+</configuration>

@@ -14,11 +14,19 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Handles serial port selection, configuration, open/close, and refresh.
+ *
+ * <p>Every user-initiated open/close is logged at INFO so the file log can be
+ * correlated with the "RX frozen" symptom — the user reported the failure happens
+ * after a <em>specific operation</em>, and open/close is the most likely trigger.</p>
  */
 public class ToolbarController {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ToolbarController.class);
 
     private final ComboBox<SerialPortInfo> portCombo;
     private final ComboBox<Integer> baudRateCombo;
@@ -103,7 +111,10 @@ public class ToolbarController {
             if (!ports.isEmpty()) {
                 portCombo.getSelectionModel().select(0);
             }
+            LOG.debug("refreshed port list: {}", ports.stream()
+                    .map(SerialPortInfo::getSystemPortName).toList());
         } catch (Exception e) {
+            LOG.warn("refreshPortList failed: {}", e.getMessage(), e);
             UiHelper.showError(Messages.get("error.list.ports"), e);
         }
     }
@@ -147,20 +158,25 @@ public class ToolbarController {
             isOpen.set(true);
             updatePortState(true);
             statusLabel.setText(Messages.get("toolbar.connected") + ": " + config);
+            LOG.info("user OPEN {} ({})", config.getPortName(), config);
             // Save to history for next time
             if (historyManager != null) historyManager.save(config);
             if (onPortStateChange != null) {
                 onPortStateChange.accept(true, config);
             }
         } catch (IOException e) {
+            LOG.error("user OPEN {} failed: {}", config.getPortName(), e.getMessage(), e);
             UiHelper.showError(Messages.get("warning.open.port"), e);
         }
     }
 
     public void closePort() {
         if (!isOpen.get()) return;
+        String portName = serialService.getCurrentConfig() != null
+                ? serialService.getCurrentConfig().getPortName() : "(unknown)";
         try {
             serialService.close();
+            LOG.info("user CLOSE {}", portName);
         } finally {
             isOpen.set(false);
             updatePortState(false);
