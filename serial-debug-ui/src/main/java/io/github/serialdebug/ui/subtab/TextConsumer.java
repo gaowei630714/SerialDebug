@@ -7,6 +7,7 @@ import io.github.serialdebug.core.parser.HexParser;
 import io.github.serialdebug.core.parser.AsciiParser;
 import io.github.serialdebug.core.log.Direction;
 import javafx.application.Platform;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Consumes raw packets and renders them as HEX/ASCII text with a batched flush.
@@ -55,6 +57,18 @@ public class TextConsumer implements PayloadConsumer {
     private long lastFlush = System.nanoTime();
     private volatile boolean flushScheduled = false;
 
+    /**
+     * RX/TX byte counters, accumulated in {@link #onPacket} per packet direction.
+     * These reflect bytes actually delivered to this consumer ("what appeared in
+     * the view"), which can differ from the driver's totals when other consumers
+     * are active. Updated on the FX thread via {@link io.github.serialdebug.ui.session.SessionTabContent}
+     * 100ms refresh timeline — not per-packet — to keep the label cheap.
+     * Reset to zero on port close via {@link #resetStats}.
+     */
+    private final AtomicLong rxBytes = new AtomicLong();
+    private final AtomicLong txBytes = new AtomicLong();
+    private final Label statsLabel = new Label(formatStats(0, 0));
+
     public TextConsumer(TextArea hexArea, TextArea asciiArea, boolean autoScroll) {
         this.hexArea = hexArea;
         this.asciiArea = asciiArea;
@@ -63,6 +77,9 @@ public class TextConsumer implements PayloadConsumer {
 
     @Override
     public void onPacket(RawPacket pkt) {
+        // Accumulate per-direction byte count — "what appeared in this view".
+        (pkt.dir() == Direction.RX ? rxBytes : txBytes).addAndGet(pkt.length());
+
         // Wall-clock millis → Beijing-time string. All sessions share one time base.
         String ts = TS_FORMAT.format(Instant.ofEpochMilli(pkt.epochMillis()));
         hexBatch.append('[').append(ts).append(' ').append(pkt.dir()).append("] ");
@@ -91,6 +108,50 @@ public class TextConsumer implements PayloadConsumer {
             flushScheduled = true;
             Platform.runLater(this::flush);
         }
+    }
+
+    /** Label showing "RX 1.2K | TX 567 B"; refreshed by a 100ms Timeline in SessionTabContent. */
+    public Label getStatsLabel() {
+        return statsLabel;
+    }
+
+    /**
+     * Push current counters into the label. Call periodically (not per-packet).
+     * Does NOT reset — use {@link #resetStats} for that.
+     */
+    public void refreshStats() {
+        statsLabel.setText(formatStats(rxBytes.get(), txBytes.get()));
+    }
+
+    /** Reset both counters to zero and update the label — call on port close. */
+    public void resetStats() {
+        rxBytes.set(0);
+        txBytes.set(0);
+        statsLabel.setText(formatStats(0, 0));
+    }
+
+    /**
+     * Format the pair as "RX 1.2K | TX 567 B". Uses binary (1024) units: B / K / M.
+     * Mirrors {@link #formatBytes} naming (no "B" suffix on K/M to match the
+     * requested "RX 1.2K" shape).
+     */
+    private static String formatStats(long rx, long tx) {
+        return "RX " + formatBytes(rx) + " | TX " + formatBytes(tx);
+    }
+
+    /**
+     * Binary-unit byte count: <1024 → "567 B"; <1024² → "1.2K"; else "3.4M".
+     * One decimal place for K/M, none for B.
+     */
+    private static String formatBytes(long bytes) {
+        if (bytes < 1024) {
+            return bytes + " B";
+        }
+        double kb = bytes / 1024.0;
+        if (kb < 1024) {
+            return String.format("%.1fK", kb);
+        }
+        return String.format("%.1fM", kb / 1024.0);
     }
 
     /**

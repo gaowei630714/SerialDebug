@@ -12,6 +12,7 @@ import io.github.serialdebug.core.serial.SerialService;
 import io.github.serialdebug.core.util.RateCalculator;
 import io.github.serialdebug.ui.controller.*;
 import io.github.serialdebug.ui.subtab.*;
+import io.github.serialdebug.ui.subtab.TextConsumer;
 import io.github.serialdebug.ui.crc.CrcPanel;
 import io.github.serialdebug.ui.at.AtCommand;
 import io.github.serialdebug.ui.at.AtCommandService;
@@ -23,6 +24,8 @@ import io.github.serialdebug.ui.config.PortHistoryManager;
 import io.github.serialdebug.ui.preset.JsonPresetService;
 import io.github.serialdebug.ui.i18n.Messages;
 import javafx.animation.AnimationTimer;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -31,6 +34,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,6 +81,13 @@ public class SessionTabContent extends BorderPane {
      * ring buffer unless the user happened to have the chart tab open.</p>
      */
     private AnimationTimer ioPump;
+    /** 100ms ticker that pushes RX/TX byte counters into the search-bar stats label. */
+    private Timeline statsTimeline;
+    /**
+     * The TextConsumer for this session's IO view, kept so the search-bar stats
+     * label can be wired up and refreshed. Created in {@link #createIOView()}.
+     */
+    private TextConsumer textConsumer;
     private SubTabPane subTabs;
     private TextArea hexArea;
     private TextArea asciiArea;
@@ -110,7 +121,9 @@ public class SessionTabContent extends BorderPane {
         Tab ioTab = new Tab();
         ioTab.textProperty().bind(Messages.createStringBinding("io.tab.receive"));
         ioTab.setContent(createIOView());
-        subTabs.addAlwaysActiveTab("io", ioTab, new TextConsumer(hexArea, asciiArea, true));
+        // Capture the consumer so we can wire its stats label into the search bar.
+        this.textConsumer = new TextConsumer(hexArea, asciiArea, true);
+        subTabs.addAlwaysActiveTab("io", ioTab, textConsumer);
 
         Tab chartTab = new Tab();
         chartTab.textProperty().bind(Messages.createStringBinding("tab.chart"));
@@ -284,8 +297,18 @@ public class SessionTabContent extends BorderPane {
         clearBtn.setOnAction(e -> displayController.onClear());
         pauseBtn.setOnAction(e -> displayController.onPauseScroll());
 
+        // RX/TX byte stats live at the far right of the search bar, separated from
+        // the controls. Refreshed by statsTimeline (100ms) — not per packet.
+        Pane statsSpacer = new Pane();
+        HBox.setHgrow(statsSpacer, Priority.ALWAYS);
         ToolBar searchBar = new ToolBar(clearBtn, pauseBtn, atToggle, new Separator(),
-                searchField, filterToggle, caseToggle);
+                searchField, filterToggle, caseToggle, statsSpacer, textConsumer.getStatsLabel());
+        textConsumer.getStatsLabel().getStyleClass().add("stats-label");
+
+        // 100ms refresh ticker for the stats label. Indefinite while the tab is alive.
+        statsTimeline = new Timeline(new KeyFrame(Duration.millis(100), e -> textConsumer.refreshStats()));
+        statsTimeline.setCycleCount(Timeline.INDEFINITE);
+        statsTimeline.play();
 
         VBox sendArea = new VBox(4);
         sendArea.getStyleClass().add("send-area");
@@ -609,6 +632,13 @@ public class SessionTabContent extends BorderPane {
     public void shutdown() {
         stopIoPump();
         stopWaveform();
+        if (statsTimeline != null) {
+            statsTimeline.stop();
+            statsTimeline = null;
+        }
+        if (textConsumer != null) {
+            textConsumer.resetStats();
+        }
         if (toolbarController != null && toolbarController.isOpen()) toolbarController.closePort();
         if (sendController != null) sendController.shutdown();
         if (fileSendController != null) fileSendController.shutdown();
