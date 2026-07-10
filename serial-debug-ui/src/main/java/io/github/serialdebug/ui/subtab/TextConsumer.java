@@ -11,6 +11,10 @@ import javafx.scene.control.TextArea;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+
 /**
  * Consumes raw packets and renders them as HEX/ASCII text with a batched flush.
  *
@@ -35,6 +39,11 @@ public class TextConsumer implements PayloadConsumer {
     private static final long FLUSH_INTERVAL_NS = 16_000_000L;
     private static final int FLUSH_SIZE_THRESHOLD = 4096;
 
+    /** Display timestamps in Beijing time (UTC+8) so all sessions match the user's wall clock. */
+    private static final ZoneId DISPLAY_ZONE = ZoneId.of("Asia/Shanghai");
+    private static final DateTimeFormatter TS_FORMAT =
+            DateTimeFormatter.ofPattern("HH:mm:ss.SSS").withZone(DISPLAY_ZONE);
+
     private final DataParser hexParser = new HexParser();
     private final DataParser asciiParser = new AsciiParser();
     private final TextArea hexArea;
@@ -54,7 +63,8 @@ public class TextConsumer implements PayloadConsumer {
 
     @Override
     public void onPacket(RawPacket pkt) {
-        String ts = formatTimestamp(pkt.nanosTimestamp());
+        // Wall-clock millis → Beijing-time string. All sessions share one time base.
+        String ts = TS_FORMAT.format(Instant.ofEpochMilli(pkt.epochMillis()));
         hexBatch.append('[').append(ts).append(' ').append(pkt.dir()).append("] ");
         hexBatch.append(hexParser.decode(pkt.data(), pkt.offset(), pkt.length()));
         hexBatch.append('\n');
@@ -83,15 +93,29 @@ public class TextConsumer implements PayloadConsumer {
         }
     }
 
+    /**
+     * Flush accumulated batches to the TextAreas.
+     *
+     * <p><strong>Scheduler re-arm bug fix:</strong> {@code flushScheduled} is
+     * cleared <em>before</em> the empty-batch check. Previously it lived inside
+     * the {@code if (hexBatch.length() > 0)} branch, so if {@code flush()} ever
+     * ran on an empty batch (e.g. data arrived between the {@code maybeFlush}
+     * check and this call on a quiet line, or a spike of {@code Platform.runLater}
+     * coalescing), the flag stayed {@code true} forever and all later data sat in
+     * the batch without ever flushing. Clearing it first guarantees every flush
+     * re-arms the scheduler for the next interval regardless of batch contents.</p>
+     */
     public void flush() {
+        flushScheduled = false;
+        // Restart the interval timer on every flush attempt so a late/empty flush
+        // does not stall the cadence for the packets that follow.
+        lastFlush = System.nanoTime();
         if (hexBatch.length() > 0) {
             final String hexText = hexBatch.toString();
             final String asciiText = asciiBatch.toString();
             int byteLen = hexBatch.length();
             hexBatch.setLength(0);
             asciiBatch.setLength(0);
-            lastFlush = System.nanoTime();
-            flushScheduled = false;
 
             hexArea.appendText(hexText);
             asciiArea.appendText(asciiText);
@@ -101,13 +125,5 @@ public class TextConsumer implements PayloadConsumer {
             }
             LOG.debug("flushed {} chars to HEX/ASCII view", byteLen);
         }
-    }
-
-    private String formatTimestamp(long nanos) {
-        long ms = nanos / 1_000_000;
-        long s = ms / 1000;
-        long m = s / 60;
-        long h = m / 60;
-        return String.format("%02d:%02d:%02d.%03d", h % 24, m % 60, s % 60, ms % 1000);
     }
 }

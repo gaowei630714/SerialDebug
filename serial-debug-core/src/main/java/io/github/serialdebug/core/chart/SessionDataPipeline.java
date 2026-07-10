@@ -35,9 +35,22 @@ public class SessionDataPipeline {
 
     private static final Logger LOG = LoggerFactory.getLogger(SessionDataPipeline.class);
 
+    /**
+     * One received/sent chunk.
+     *
+     * <p>{@code epochMillis} is <strong>wall-clock milliseconds since the Unix
+     * epoch</strong> (from {@link System#currentTimeMillis}), captured on the
+     * jSerialComm listener thread at publish time. It is <em>not</em> a
+     * {@link System#nanoTime nanoTime} value — nanoTime is monotonic but has no
+     * relation to wall time, so it cannot be formatted as a human-readable clock.
+     *
+     * <p>Using wall-clock millis means every session in the same JVM shares one
+     * time base, and the UI can render it in any zone (currently Asia/Shanghai,
+     * see {@link io.github.serialdebug.ui.subtab.TextConsumer}).</p>
+     */
     public record RawPacket(
             byte[] data, int offset, int length,
-            long nanosTimestamp, Direction dir) {}
+            long epochMillis, Direction dir) {}
 
     private static final int DEFAULT_CAPACITY = 8192;
     private final RingBuffer<RawPacket> buffer;
@@ -66,7 +79,10 @@ public class SessionDataPipeline {
 
         // Detect overflow: offer() returns void, so compare size before/after.
         int sizeBefore = buffer.size();
-        buffer.offer(new RawPacket(copy, 0, copy.length, System.nanoTime(), dir));
+        // Wall-clock millis (not nanoTime): every session shares one time base
+        // and the UI can render it as a real clock (Beijing time). nanoTime is
+        // only suitable for measuring elapsed durations, never for timestamps.
+        buffer.offer(new RawPacket(copy, 0, copy.length, System.currentTimeMillis(), dir));
         if (sizeBefore == buffer.capacity()) {
             // Buffer was full before this offer → one packet got overwritten.
             if (!overflowLatched) {
