@@ -32,6 +32,8 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import org.kordamp.ikonli.javafx.FontIcon;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Builds the complete UI content for one serial session within a tab.
@@ -62,6 +64,19 @@ public class SessionTabContent extends BorderPane {
     private final DataExtractor waveExtractor = new DataExtractor();
     private final WaveChartCanvas waveCanvas = new WaveChartCanvas(waveBuffer, 800, 300);
     private AnimationTimer waveTimer;
+
+    private static final Logger LOG = LoggerFactory.getLogger(SessionTabContent.class);
+
+    /**
+     * Always-on dispatch pump. Drains {@code session.getPipeline()} on every FX pulse
+     * so received bytes reach the HEX/ASCII view in real time on the main IO tab.
+     *
+     * <p>Owned by the <em>port-session lifecycle</em> (start on port-open, stop on
+     * port-close), NOT by the waveform chart tab. Before this fix, dispatch() was
+     * only called from {@link #startWaveform()}, so data silently piled up in the
+     * ring buffer unless the user happened to have the chart tab open.</p>
+     */
+    private AnimationTimer ioPump;
     private SubTabPane subTabs;
     private TextArea hexArea;
     private TextArea asciiArea;
@@ -168,6 +183,13 @@ public class SessionTabContent extends BorderPane {
             boolean isConnected = connected != null && connected;
             sendController.setPortOpen(isConnected);
             statusBarController.updateConnectionStatus(isConnected, config);
+            // Drive the always-on dispatch pump from the port lifecycle, so the HEX/ASCII
+            // view updates in real time regardless of which sub-tab is active.
+            if (isConnected) {
+                startIoPump();
+            } else {
+                stopIoPump();
+            }
             if (!isConnected) {
                 displayController.resetRateCalcs();
                 statusBarController.resetRateLabels();
@@ -538,7 +560,8 @@ public class SessionTabContent extends BorderPane {
         waveTimer = new AnimationTimer() {
             @Override
             public void handle(long now) {
-                session.getPipeline().dispatch();
+                // dispatch() is now owned by ioPump (port-open lifecycle); the
+                // waveform tab only needs to redraw its canvas each pulse.
                 waveCanvas.redraw();
             }
         };
@@ -552,6 +575,29 @@ public class SessionTabContent extends BorderPane {
         }
     }
 
+    private void startIoPump() {
+        if (ioPump != null) return;
+        ioPump = new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                int n = session.getPipeline().dispatch();
+                if (n > 0) {
+                    LOG.debug("ioPump dispatched {} packet(s)", n);
+                }
+            }
+        };
+        ioPump.start();
+        LOG.debug("ioPump started");
+    }
+
+    private void stopIoPump() {
+        if (ioPump != null) {
+            ioPump.stop();
+            ioPump = null;
+            LOG.debug("ioPump stopped");
+        }
+    }
+
     public void onStartLogging() {
         if (logController != null) logController.onStartLogging();
     }
@@ -561,6 +607,7 @@ public class SessionTabContent extends BorderPane {
     }
 
     public void shutdown() {
+        stopIoPump();
         stopWaveform();
         if (toolbarController != null && toolbarController.isOpen()) toolbarController.closePort();
         if (sendController != null) sendController.shutdown();
