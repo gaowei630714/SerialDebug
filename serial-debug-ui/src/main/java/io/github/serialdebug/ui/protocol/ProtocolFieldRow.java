@@ -33,24 +33,35 @@ public class ProtocolFieldRow {
         setEnabled(field.enabled());
     }
 
+    private static double toDouble(String s, double defaultValue) {
+        try { return Double.parseDouble(s); } catch (NumberFormatException e) { return defaultValue; }
+    }
+
+    public ProtocolFieldRow() {
+        // no-arg constructor for new-field buttons; defaults are set at field level
+    }
+
     public ProtocolField toProtocolField() {
-        String bitsText = getBits();
-        java.util.List<Integer> bitsList = java.util.Collections.emptyList();
-        if (bitsText != null && !bitsText.isBlank()) {
-            bitsText = bitsText.trim().replace("[", "").replace("]", "");
-            String[] parts = bitsText.split(",");
-            bitsList = new java.util.ArrayList<>();
-            for (String p : parts) {
-                if (!p.isBlank()) bitsList.add(Integer.parseInt(p.trim()));
-            }
-        }
+        List<Integer> bitsList = parseBits(getBits());
         return new ProtocolField(getName(), getLabel(), getOffset(), getSize(),
-                getType(), toDouble(getScale()), toDouble(getBias()),
+                getType(), toDouble(getScale(), 1.0), toDouble(getBias(), 0.0),
                 bitsList, isEnabled());
     }
 
-    private static double toDouble(String s) {
-        try { return Double.parseDouble(s); } catch (NumberFormatException e) { return 1.0; }
+    private List<Integer> parseBits(String bitsText) {
+        List<Integer> list = new ArrayList<>();
+        if (bitsText == null || bitsText.isBlank()) return list;
+        String cleaned = bitsText.trim().replace("[", "").replace("]", "");
+        for (String part : cleaned.split(",")) {
+            String p = part.trim();
+            if (p.isBlank()) continue;
+            try {
+                list.add(Integer.parseInt(p));
+            } catch (NumberFormatException ignored) {
+                // Silently skip malformed tokens so one bad bit doesn't block save
+            }
+        }
+        return list;
     }
 
     // Properties

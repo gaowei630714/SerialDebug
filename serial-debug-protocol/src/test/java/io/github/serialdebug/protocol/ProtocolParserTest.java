@@ -53,7 +53,7 @@ class ProtocolParserTest {
         assertEquals(0, out.size());
         p.feed(new byte[]{0, 0, 0, 0}, 0, 4);
         assertEquals(1, out.size());
-        assertEquals(0x1007, out.get(0).value());
+        assertEquals(4103.0, out.get(0).value(), 0.001);
     }
 
     @Test

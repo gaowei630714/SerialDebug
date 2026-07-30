@@ -21,7 +21,7 @@ public class ProtocolConsumer implements PayloadConsumer {
 
     private final ChartDataBuffer dataBuffer;
     private final Consumer<List<ProtocolValue>> onExtracted;
-    private ProtocolParser parser;
+    private volatile ProtocolParser parser;
 
     public ProtocolConsumer(ChartDataBuffer dataBuffer,
                             Consumer<List<ProtocolValue>> onExtracted) {
@@ -30,9 +30,10 @@ public class ProtocolConsumer implements PayloadConsumer {
         this.parser = null;
     }
 
-    /** Switch to a new protocol (or null to disable). */
+    /** Switch to a new protocol (or null to disable). Old parser is cleared. */
     public void setProtocol(Protocol protocol) {
         if (protocol == null) {
+            if (parser != null) parser.clear();
             this.parser = null;
         } else {
             this.parser = new ProtocolParser(protocol);
@@ -61,6 +62,12 @@ public class ProtocolConsumer implements PayloadConsumer {
         if (parser != null) parser.clear();
     }
 
+    /**
+     * Get the current parser. May be null if no protocol is selected.
+     *
+     * @return the current parser, or null. The parser is thread-unsafe;
+     * do not call feed/clear/setOnValue from outside the listener thread.
+     */
     public ProtocolParser getParser() {
         return parser;
     }

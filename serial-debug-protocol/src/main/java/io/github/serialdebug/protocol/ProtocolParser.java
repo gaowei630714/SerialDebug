@@ -2,6 +2,7 @@ package io.github.serialdebug.protocol;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -25,10 +26,11 @@ public class ProtocolParser {
     private Consumer<ProtocolValue> onValue;
 
     public ProtocolParser(Protocol protocol) {
-        this.protocol = protocol;
-        this.frameLength = protocol.framing().frameLength();
-        this.headerMode = "header".equals(protocol.framing().mode());
-        this.header = headerMode ? decodeHeaderHex(protocol.framing().header()) : null;
+        this.protocol = Objects.requireNonNull(protocol, "protocol must not be null");
+        ProtocolFraming framing = Objects.requireNonNull(protocol.framing(), "framing must not be null");
+        this.frameLength = framing.frameLength();
+        this.headerMode = "header".equals(framing.mode());
+        this.header = headerMode ? decodeHeaderHex(framing.header()) : null;
         this.maxCapacity = frameLength * 4;
         this.buffer = new byte[maxCapacity];
     }
@@ -132,7 +134,10 @@ public class ProtocolParser {
             try {
                 double raw = readBytes(frame, field);
                 if (field.bits() != null) {
-                    raw = bitSlice((long) raw, field.size(), field.bits());
+                    // Per spec: raw treated as UNSIGNED size*8-bit integer
+                    // Cast-to-long would sign-extend negative ints, polluting upper bits.
+                    long rawBits = (long) raw & mask(field.size() * 8);
+                    raw = bitSlice(rawBits, field.size(), field.bits());
                 }
                 double value = raw * field.scale() + field.bias();
                 if (onValue != null) {
@@ -178,6 +183,11 @@ public class ProtocolParser {
                          : (((long)b4 << 56) | ((long)b5 << 48) | ((long)b6 << 40) | ((long)b7 << 32));
         long bits = little ? (hi << 32) | lo : (lo << 32) | hi;
         return Double.longBitsToDouble(bits);
+    }
+
+    /** Mask keeping only the lowest n bits (n in [1,64]). */
+    private static long mask(int nbits) {
+        return nbits == 64 ? -1L : (1L << nbits) - 1;
     }
 
     private long bitSlice(long raw, int size, List<Integer> bits) {

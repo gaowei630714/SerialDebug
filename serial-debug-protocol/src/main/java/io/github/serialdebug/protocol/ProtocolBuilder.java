@@ -28,7 +28,7 @@ public class ProtocolBuilder {
     public Optional<Protocol> build() {
         if (name == null || name.isBlank()) return Optional.empty();
         Protocol protocol = new Protocol(name, version,
-                new ProtocolFraming(mode, header, frameLength), fields);
+                new ProtocolFraming(mode, header, frameLength), List.copyOf(fields));
         ProtocolValidator.ValidationResult vr = ProtocolValidator.validate(protocol);
         return vr.valid() ? Optional.of(protocol) : Optional.empty();
     }

@@ -95,19 +95,10 @@ public class ProtocolPanel extends VBox {
         fixedRadio.setToggleGroup(framingGroup);
         fixedRadio.setText(Messages.get("protocol.framing.fixed"));
 
-        HBox framingHbox = new HBox(6,
-                new Label(Messages.get("protocol.framing") + ":"),
-                headerRadio, fixedRadio,
-                new Label(Messages.get("protocol.header") + ":"), headerField,
-                new Label(Messages.get("protocol.frameLength") + ":"), frameLengthField);
-        framingHbox.setAlignment(Pos.CENTER_LEFT);
-
         headerField.setPrefWidth(110);
         headerField.setText("AA55");
         frameLengthField.setPrefWidth(70);
         frameLengthField.setText("10");
-
-        VBox framingBox = new VBox(4, framingHbox);
 
         // Header hex field visibility bound to header radio
         HBox headerRow = new HBox(6, new Label(Messages.get("protocol.header") + ":"), headerField);
@@ -336,17 +327,23 @@ public class ProtocolPanel extends VBox {
     private Optional<Protocol> buildProtocol() {
         String name = nameCombo.getSelectionModel().getSelectedItem();
         if (name == null || name.isBlank()) {
-            UiHelper.showWarning("Please select or enter a protocol name.");
+            UiHelper.showWarning(Messages.get("protocol.error.select.name"));
             return Optional.empty();
         }
         int frameLength;
         try { frameLength = Integer.parseInt(frameLengthField.getText()); }
         catch (NumberFormatException e) {
-            UiHelper.showWarning("Frame length must be an integer.");
+            UiHelper.showWarning(Messages.get("protocol.error.invalid.frameLength"));
             return Optional.empty();
         }
         String mode = headerRadio.isSelected() ? "header" : "fixed";
         String header = headerRadio.isSelected() ? headerField.getText() : "";
+        return buildProtocolWithValidation(name, frameLength, mode, header);
+    }
+
+    /** Build from controls and validate (used by save()). */
+    private Optional<Protocol> buildProtocolWithValidation(String name, int frameLength,
+                                                           String mode, String header) {
         List<ProtocolField> fields = fieldRows.stream()
                 .map(ProtocolFieldRow::toProtocolField)
                 .filter(f -> !(f.name() == null || f.name().isBlank()))
@@ -361,20 +358,9 @@ public class ProtocolPanel extends VBox {
         return builder.build();
     }
 
-    private void updateJsonPreview() {
-        Optional<Protocol> opt = buildProtocolSilent();
-        if (opt.isEmpty()) {
-            jsonPreview.clear();
-            return;
-        }
-        try {
-            jsonPreview.setText(mapper.writeValueAsString(opt.get()));
-        } catch (JsonProcessingException e) {
-            jsonPreview.clear();
-        }
-    }
-
-    /** Build without validation warnings, for preview purposes. */
+    /**
+     * Build a Protocol for display/preview without validation or i18n warnings.
+     */
     private Optional<Protocol> buildProtocolSilent() {
         String name = nameCombo.getSelectionModel().getSelectedItem();
         if (name == null || name.isBlank()) return Optional.empty();
@@ -387,8 +373,8 @@ public class ProtocolPanel extends VBox {
                 .map(ProtocolFieldRow::toProtocolField)
                 .filter(f -> !(f.name() == null || f.name().isBlank()))
                 .toList();
-        Protocol p = new Protocol(name, "1.0", new ProtocolFraming(mode, header, frameLength), fields);
-        return Optional.of(p);
+        return Optional.of(new Protocol(name, "1.0",
+                new ProtocolFraming(mode, header, frameLength), fields));
     }
 
     /**
