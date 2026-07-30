@@ -21,6 +21,12 @@ import io.github.serialdebug.ui.dashboard.DashboardConsumer;
 import io.github.serialdebug.ui.chart.WaveChartCanvas;
 import io.github.serialdebug.ui.config.PortHistoryManager;
 import io.github.serialdebug.ui.preset.JsonPresetService;
+import io.github.serialdebug.protocol.Protocol;
+import io.github.serialdebug.protocol.JsonProtocolStore;
+import io.github.serialdebug.protocol.ProtocolStore;
+import io.github.serialdebug.protocol.ProtocolValidator;
+import io.github.serialdebug.ui.protocol.ProtocolConsumer;
+import io.github.serialdebug.ui.protocol.ProtocolPanel;
 import io.github.serialdebug.ui.i18n.Messages;
 import javafx.animation.AnimationTimer;
 import javafx.collections.FXCollections;
@@ -127,6 +133,16 @@ public class SessionTabContent extends BorderPane {
 
         // Dashboard tab (lazy, registers DashboardConsumer)
         DashboardPanel dashboardPanel = new DashboardPanel(waveExtractor);
+
+        // Protocol tab (lazy, registers ProtocolConsumer)
+        JsonProtocolStore protocolStore = new JsonProtocolStore();
+        ProtocolConsumer protocolConsumer = new ProtocolConsumer(waveBuffer, dashboardPanel::onExtracted);
+        Tab protocolTab = new Tab();
+        protocolTab.textProperty().bind(Messages.createStringBinding("tab.protocol"));
+        ProtocolPanel protocolPanel = new ProtocolPanel(protocolStore, protocolConsumer::setProtocol);
+        protocolTab.setContent(protocolPanel);
+        subTabs.addLazyTab("protocol", protocolTab, protocolConsumer, null, null);
+
         Tab dashTab = new Tab();
         dashTab.textProperty().bind(Messages.createStringBinding("tab.dashboard"));
         dashTab.setContent(dashboardPanel);

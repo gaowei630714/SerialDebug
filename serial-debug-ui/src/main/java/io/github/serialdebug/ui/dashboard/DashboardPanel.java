@@ -2,6 +2,7 @@ package io.github.serialdebug.ui.dashboard;
 
 import io.github.serialdebug.core.chart.DataExtractor;
 import io.github.serialdebug.core.chart.DataExtractor.ExtractedValue;
+import io.github.serialdebug.protocol.ProtocolValue;
 import io.github.serialdebug.ui.i18n.Messages;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -62,6 +63,19 @@ public class DashboardPanel extends BorderPane {
         for (ExtractedValue v : values) {
             MetricCard card = cards.computeIfAbsent(
                     v.seriesName(), name -> {
+                        MetricCard c = new MetricCard(name);
+                        tilePane.getChildren().add(c);
+                        return c;
+                    });
+            card.update(v.value());
+        }
+    }
+
+    /** Called by ProtocolConsumer when new values are extracted. */
+    public void onExtracted(List<ProtocolValue> values) {
+        for (ProtocolValue v : values) {
+            MetricCard card = cards.computeIfAbsent(
+                    v.name(), name -> {
                         MetricCard c = new MetricCard(name);
                         tilePane.getChildren().add(c);
                         return c;
