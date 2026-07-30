@@ -1,5 +1,6 @@
 package io.github.serialdebug.protocol;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.List;
 
 /** Description of one numeric field within a protocol frame. */
@@ -14,6 +15,7 @@ public record ProtocolField(
         List<Integer> bits,
         boolean enabled) {
 
+    @JsonIgnore
     public String getLabelOrDefault() {
         return label == null || label.isBlank() ? name : label;
     }
